@@ -10,9 +10,10 @@ import {
   type ToolbarModuleConfig,
 } from '@blocksuite/affine-shared/services';
 import { BlockSelection } from '@blocksuite/block-std';
+import { nextTick } from '@blocksuite/global/utils';
 import { MoreVerticalIcon } from '@blocksuite/icons/lit';
 import type {
-  FloatingElement,
+  AutoUpdateOptions,
   Placement,
   ReferenceElement,
 } from '@floating-ui/dom';
@@ -37,38 +38,64 @@ import toPairs from 'lodash.topairs';
 
 export function autoUpdatePosition(
   referenceElement: ReferenceElement,
-  floating: FloatingElement,
-  placement: Placement = 'top-start'
+  toolbar: EditorToolbar,
+  placement: Placement = 'top-start',
+  options: AutoUpdateOptions = { elementResize: false, animationFrame: false }
 ) {
+  const abortController = new AbortController();
+  const signal = abortController.signal;
   const update = async () => {
-    const { x, y } = await computePosition(referenceElement, floating, {
+    await Promise.race([
+      new Promise(resolve => {
+        if (signal.aborted) {
+          resolve(signal.reason);
+          return;
+        }
+        signal.addEventListener('abort', () => resolve(signal.reason));
+      }),
+      toolbar.updateComplete.then(nextTick),
+    ]);
+
+    const { x, y } = await computePosition(referenceElement, toolbar, {
       placement,
       middleware: [offset(10), inline(), shift({ padding: 6 }), flip()],
     });
 
-    Object.assign(floating.style, {
-      transform: `translate3d(${x}px, ${y}px, 0)`,
-    });
+    toolbar.style.transform = `translate3d(${x}px, ${y}px, 0)`;
   };
 
-  return autoUpdate(referenceElement, floating, () => {
-    update().catch(console.error);
+  const cleanup = autoUpdate(
+    referenceElement,
+    toolbar,
+    () => {
+      update().catch(console.error);
+    },
+    options
+  );
+
+  return () => {
+    cleanup();
+    !signal.aborted && abortController.abort();
+  };
+}
+
+function group(actions: ToolbarAction[]) {
+  const grouped = groupBy(actions, a => a.id);
+
+  const paired = toPairs(grouped).map(([_, items]) => {
+    if (items.length === 1) return items[0];
+    const [first, ...others] = items;
+    if (others.length === 1) return merge({ ...first }, others[0]);
+    return others.reduce(merge, { ...first });
   });
+
+  return paired;
 }
 
 export function combine(actions: ToolbarActions, context: ToolbarContext) {
-  const grouped = groupBy(actions, a => a.id);
+  const grouped = group(actions);
 
-  const paired = toPairs(grouped)
-    .map(([_, items]) => {
-      if (items.length === 1) return items;
-      const [first, ...others] = items;
-      if (others.length === 1) return merge({ ...first }, others[0]);
-      return others.reduce(merge, { ...first });
-    })
-    .flat();
-
-  const generated = paired.map(action => {
+  const generated = grouped.map(action => {
     if ('generate' in action && action.generate) {
       // TODO(@fundon): should delete `generate` fn
       return {
@@ -88,7 +115,9 @@ export function combine(actions: ToolbarActions, context: ToolbarContext) {
 }
 
 const merge = (a: any, b: any) =>
-  mergeWith(a, b, (obj, src) => (Array.isArray(obj) ? obj.concat(src) : src));
+  mergeWith(a, b, (obj, src) =>
+    Array.isArray(obj) ? group(obj.concat(src)) : src
+  );
 
 /**
  * Renders toolbar
@@ -100,8 +129,8 @@ const merge = (a: any, b: any) =>
  * 4. `custom:affine:*`
  */
 export function renderToolbar(
-  context: ToolbarContext,
   toolbar: EditorToolbar,
+  context: ToolbarContext,
   flavour: string
 ) {
   const toolbarRegistry = context.toolbarRegistry;
@@ -223,9 +252,12 @@ function renderActions(
 
 // TODO(@fundon): supports templates
 function renderActionItem(action: ToolbarAction, context: ToolbarContext) {
+  const ids = action.id.split('.');
+  const id = ids[ids.length - 1];
   return html`
     <editor-icon-button
-      data-testid=${action.id}
+      data-testid=${ifDefined(id)}
+      aria-label=${ifDefined(action.label ?? action.tooltip ?? id)}
       ?active=${typeof action.active === 'function'
         ? action.active(context)
         : action.active}
@@ -239,9 +271,12 @@ function renderActionItem(action: ToolbarAction, context: ToolbarContext) {
 }
 
 function renderMenuActionItem(action: ToolbarAction, context: ToolbarContext) {
+  const ids = action.id.split('.');
+  const id = ids[ids.length - 1];
   return html`
     <editor-menu-action
-      data-testid=${action.id}
+      data-testid=${ifDefined(id)}
+      aria-label=${ifDefined(action.label ?? action.tooltip ?? id)}
       class="${ifDefined(
         action.variant === 'destructive' ? 'delete' : undefined
       )}"

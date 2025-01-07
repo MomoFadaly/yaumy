@@ -14,7 +14,8 @@ import { html } from 'lit-html';
 export class DocTitle extends ShadowlessElement {
   static override styles = css`
     editor-icon-button .label {
-      max-width: 110px;
+      min-width: 60px;
+      max-width: 140px;
       display: inline-block;
       overflow: hidden;
       text-overflow: ellipsis;

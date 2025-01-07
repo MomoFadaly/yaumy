@@ -62,11 +62,11 @@
     "./block-selection": "./src/block-selection/index.ts",
     "./doc-title": "./src/doc-title/index.ts",
     "./embed-card-modal": "./src/embed-card-modal/index.ts",
-    "./view-dropdown": "./src/view-dropdown/index.ts",
-    "./card-style-dropdown": "./src/card-style-dropdown/index.ts",
     "./link-preview": "./src/link-preview/index.ts",
     "./linked-doc-title": "./src/linked-doc-title/index.ts",
-    "./highlight-dropdown": "./src/highlight-dropdown/index.ts"
+    "./view-dropdown-menu": "./src/view-dropdown-menu/index.ts",
+    "./card-style-dropdown-menu": "./src/card-style-dropdown-menu/index.ts",
+    "./highlight-dropdown-menu": "./src/highlight-dropdown-menu/index.ts"
   },
   "files": [
     "src",

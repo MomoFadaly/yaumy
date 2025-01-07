@@ -208,8 +208,10 @@ export class EditorMenuAction extends LitElement {
     }
 
     ::slotted(.label) {
-      text-transform: capitalize !important;
       color: inherit !important;
+    }
+    ::slotted(.label.capitalize) {
+      text-transform: capitalize !important;
     }
   `;
 

@@ -35,15 +35,15 @@ export const builtinInlineReferenceToolbarConfig = {
       },
     },
     {
-      id: 'b.conversions',
+      id: 'c.conversions',
       actions: [
         {
-          id: 'inline-view',
+          id: 'inline',
           label: 'Inline view',
           disabled: true,
         },
         {
-          id: 'card-view',
+          id: 'card',
           label: 'Card view',
           run(cx) {
             const message$ = cx.toolbarRegistry.message$;
@@ -80,7 +80,9 @@ export const builtinInlineReferenceToolbarConfig = {
               inlineEditor.insertText(selfInlineRange, target.docTitle);
             }
 
-            cx.select('note', cx.selection.create(BlockSelection, { blockId }));
+            cx.select('note', [
+              cx.selection.create(BlockSelection, { blockId }),
+            ]);
 
             // card
             // track(this.std, 'SelectedView', {
@@ -90,7 +92,7 @@ export const builtinInlineReferenceToolbarConfig = {
           },
         },
         {
-          id: 'embed-view',
+          id: 'embed',
           label: 'Embed view',
           when(cx) {
             return cx.std
@@ -164,7 +166,9 @@ export const builtinInlineReferenceToolbarConfig = {
               notifyLinkedDocSwitchedToEmbed(cx.std);
             }
 
-            cx.select('note', cx.selection.create(BlockSelection, { blockId }));
+            cx.select('note', [
+              cx.selection.create(BlockSelection, { blockId }),
+            ]);
 
             // embed
             // track(this.std, 'SelectedView', {
@@ -190,12 +194,12 @@ export const builtinInlineReferenceToolbarConfig = {
 
         return html`${keyed(
           target,
-          html`<affine-view-dropdown
+          html`<affine-view-dropdown-menu
             .actions=${actions}
             .context=${cx}
             .toggle=${toggle}
             .viewType$=${viewType$}
-          ></affine-view-dropdown>`
+          ></affine-view-dropdown-menu>`
         )}`;
       },
       when(cx) {

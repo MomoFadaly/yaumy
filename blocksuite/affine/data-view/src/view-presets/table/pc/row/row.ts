@@ -14,6 +14,7 @@ import {
   type TableViewSelection,
 } from '../../selection';
 import type { TableSingleView } from '../../table-view-manager.js';
+import type { TableGroup } from '../group.js';
 import { openDetail, popRowMenu } from '../menu.js';
 
 export class TableRow extends SignalWatcher(WithDisposable(ShadowlessElement)) {
@@ -156,7 +157,7 @@ export class TableRow extends SignalWatcher(WithDisposable(ShadowlessElement)) {
   };
 
   get groupKey() {
-    return this.closest('affine-data-view-table-group')?.group?.key;
+    return this.closest<TableGroup>('affine-data-view-table-group')?.group?.key;
   }
 
   get selectionController() {

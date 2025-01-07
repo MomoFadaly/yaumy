@@ -47,9 +47,9 @@ test('should not show hidden note in embed view page mode', async ({
 
   // switch to embed view
   await inlineLink.hover();
-  const inlineToolbar = page.locator('reference-popup');
-  await inlineToolbar.getByLabel('Switch view').click();
-  await inlineToolbar.getByLabel('Embed view').click();
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
+  await toolbar.getByLabel('Switch view').click();
+  await toolbar.getByLabel('Embed view').click();
 
   // check the content
   const embedLink = page.locator('affine-embed-synced-doc-block');

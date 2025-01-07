@@ -75,15 +75,11 @@ import { EdgelessTemplatePanel } from './edgeless/components/toolbar/template/te
 import { EdgelessTemplateButton } from './edgeless/components/toolbar/template/template-tool-button.js';
 import { EdgelessTextMenu } from './edgeless/components/toolbar/text/text-menu.js';
 import {
-  AFFINE_EMBED_CARD_TOOLBAR_WIDGET,
-  AFFINE_FORMAT_BAR_WIDGET,
-  AffineFormatBarWidget,
   AffineImageToolbarWidget,
   AffineModalWidget,
   EDGELESS_TOOLBAR_WIDGET,
   EdgelessRootBlockComponent,
   EdgelessRootPreviewBlockComponent,
-  EmbedCardToolbar,
   FramePreview,
   PageRootBlockComponent,
   PreviewRootBlockComponent,
@@ -153,7 +149,6 @@ function registerRootComponents() {
 }
 
 function registerWidgets() {
-  customElements.define(AFFINE_EMBED_CARD_TOOLBAR_WIDGET, EmbedCardToolbar);
   customElements.define(AFFINE_INNER_MODAL_WIDGET, AffineInnerModalWidget);
   customElements.define(AFFINE_MODAL_WIDGET, AffineModalWidget);
   customElements.define(
@@ -171,7 +166,6 @@ function registerWidgets() {
     AffineEdgelessZoomToolbarWidget
   );
   customElements.define(AFFINE_SURFACE_REF_TOOLBAR, AffineSurfaceRefToolbar);
-  customElements.define(AFFINE_FORMAT_BAR_WIDGET, AffineFormatBarWidget);
 }
 
 function registerEdgelessToolbarComponents() {

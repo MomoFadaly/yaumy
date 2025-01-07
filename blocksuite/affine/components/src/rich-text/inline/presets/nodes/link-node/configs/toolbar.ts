@@ -6,12 +6,19 @@ import {
   type ToolbarModuleConfig,
 } from '@blocksuite/affine-shared/services';
 import { BlockSelection } from '@blocksuite/block-std';
-import { DeleteIcon, UnlinkIcon } from '@blocksuite/icons/lit';
+import {
+  CopyIcon,
+  DeleteIcon,
+  EditIcon,
+  UnlinkIcon,
+} from '@blocksuite/icons/lit';
 import { signal } from '@preact/signals-core';
 import { html } from 'lit-html';
 import { keyed } from 'lit-html/directives/keyed.js';
 
+import { toast } from '../../../../../../toast';
 import { AffineLink } from '../affine-link';
+import { toggleLinkPopup } from '../link-popup/toggle-link-popup';
 
 export const builtinInlineLinkToolbarConfig = {
   actions: [
@@ -28,15 +35,70 @@ export const builtinInlineLinkToolbarConfig = {
       },
     },
     {
-      id: 'b.conversions',
+      id: 'b.copy-link-and-edit',
       actions: [
         {
-          id: 'inline-view',
+          id: 'copy-link',
+          tooltip: 'Copy link',
+          icon: CopyIcon(),
+          run(ctx) {
+            const target = ctx.message$.peek()?.element;
+            if (!(target instanceof AffineLink)) return;
+
+            const { link } = target;
+
+            if (!link) return;
+
+            // hides
+            // TODO(@fundon): use a cleaner API
+            ctx.reset();
+
+            navigator.clipboard.writeText(link).catch(console.error);
+            toast(ctx.host, 'Copied link to clipboard');
+
+            // TODO(@fundon): add tracking event
+            // track(ctx.std, 'CopiedLink', { control: 'copy link' });
+          },
+        },
+        {
+          id: 'edit',
+          tooltip: 'Edit',
+          icon: EditIcon(),
+          run(ctx) {
+            const target = ctx.message$.peek()?.element;
+            if (!(target instanceof AffineLink)) return;
+
+            // ctx.hide();
+
+            const { inlineEditor, selfInlineRange } = target;
+
+            if (!inlineEditor || !selfInlineRange) return;
+
+            const abortController = new AbortController();
+            const popover = toggleLinkPopup(
+              ctx.std,
+              'edit',
+              inlineEditor,
+              selfInlineRange,
+              abortController
+            );
+            abortController.signal.onabort = () => popover.remove();
+
+            // track(ctx.std, 'OpenedAliasPopup', { control: 'edit' });
+          },
+        },
+      ],
+    },
+    {
+      id: 'c.conversions',
+      actions: [
+        {
+          id: 'inline',
           label: 'Inline view',
           disabled: true,
         },
         {
-          id: 'card-view',
+          id: 'card',
           label: 'Card view',
           run(cx) {
             const message$ = cx.toolbarRegistry.message$;
@@ -91,7 +153,9 @@ export const builtinInlineLinkToolbarConfig = {
               inlineEditor.formatText(selfInlineRange, { link: null });
             }
 
-            cx.select('note', cx.selection.create(BlockSelection, { blockId }));
+            cx.select('note', [
+              cx.selection.create(BlockSelection, { blockId }),
+            ]);
 
             // card
             // track(cx.std, 'SelectedView', {
@@ -101,7 +165,7 @@ export const builtinInlineLinkToolbarConfig = {
           },
         },
         {
-          id: 'embed-view',
+          id: 'embed',
           label: 'Embed view',
           when(cx) {
             const registry = cx.toolbarRegistry;
@@ -170,7 +234,9 @@ export const builtinInlineLinkToolbarConfig = {
               inlineEditor.formatText(selfInlineRange, { link: null });
             }
 
-            cx.select('note', cx.selection.create(BlockSelection, { blockId }));
+            cx.select('note', [
+              cx.selection.create(BlockSelection, { blockId }),
+            ]);
 
             // embed
             // track(cx.std, 'SelectedView', {
@@ -196,12 +262,12 @@ export const builtinInlineLinkToolbarConfig = {
 
         return html`${keyed(
           target,
-          html`<affine-view-dropdown
+          html`<affine-view-dropdown-menu
             .actions=${actions}
             .context=${cx}
             .toggle=${toggle}
             .viewType$=${viewType$}
-          ></affine-view-dropdown>`
+          ></affine-view-dropdown-menu>`
         )}`;
       },
       when(cx) {

@@ -244,7 +244,9 @@ test('should turn attachment to image works', async ({ page }, testInfo) => {
   expect(await getPageSnapshot(page, true)).toMatchSnapshot(
     `${testInfo.title}_1.json`
   );
+
   await turnImageToCard();
+
   expect(await getPageSnapshot(page, true)).toMatchSnapshot(
     `${testInfo.title}_2.json`
   );

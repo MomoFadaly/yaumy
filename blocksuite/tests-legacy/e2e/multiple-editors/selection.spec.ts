@@ -28,6 +28,8 @@ test('should only show one format bar when multiple editors are toggled', async 
   await dragBetweenCoords(page, above123, bottomRight789, { steps: 10 });
 
   // should only show one format bar
-  const formatBar = page.locator('affine-toolbar-widget editor-toolbar');
+  const formatBar = page.locator(
+    'affine-toolbar-widget editor-toolbar[data-open]'
+  );
   await expect(formatBar).toHaveCount(1);
 });

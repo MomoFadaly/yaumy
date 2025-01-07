@@ -13,15 +13,14 @@ import type {
 import {
   codeToolbarWidget,
   DocModeProvider,
-  embedCardToolbarWidget,
   FeatureFlagService,
-  formatBarWidget,
   imageToolbarWidget,
   ParagraphBlockService,
   ReferenceNodeConfigIdentifier,
   slashMenuWidget,
   surfaceRefToolbarWidget,
   VirtualKeyboardProvider as BSVirtualKeyboardProvider,
+  toolbarWidget,
 } from '@blocksuite/affine/blocks';
 import type {
   Container,
@@ -167,11 +166,10 @@ export function enableMobileExtension(
   specBuilder: SpecBuilder,
   framework: FrameworkProvider
 ): void {
-  specBuilder.omit(formatBarWidget);
-  specBuilder.omit(embedCardToolbarWidget);
   specBuilder.omit(slashMenuWidget);
   specBuilder.omit(codeToolbarWidget);
   specBuilder.omit(imageToolbarWidget);
   specBuilder.omit(surfaceRefToolbarWidget);
+  specBuilder.omit(toolbarWidget);
   specBuilder.extend([MobileSpecsPatches, KeyboardToolbarExtension(framework)]);
 }

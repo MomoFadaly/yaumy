@@ -50,12 +50,12 @@ import {
   DuplicateIcon,
   LinkedPageIcon,
 } from '@blocksuite/icons/lit';
+import { toDraftModel } from '@blocksuite/store';
 import { html } from 'lit';
 import { repeat } from 'lit/directives/repeat.js';
 
 import { updateBlockType } from '../commands';
 
-// Displays only in a single paragraph.
 const conversionsActionGroup = {
   id: 'a.conversions',
   when: ({ chain }) => isFormatSupported(chain).run()[0],
@@ -69,8 +69,9 @@ const conversionsActionGroup = {
       .run();
 
     // only support model with text
-    const vaild = ok && selectedModels.filter(model => model.text).length === 1;
-    if (!vaild) return null;
+    // TODO(@fundon): displays only in a single paragraph, `length === 1`.
+    const allowed = ok && selectedModels.filter(model => model.text).length > 0;
+    if (!allowed) return null;
 
     const model = selectedModels[0];
     const conversion =
@@ -94,7 +95,7 @@ const conversionsActionGroup = {
           .contentPadding="${'8px'}"
           .button=${html`
             <editor-icon-button
-              aria-label="conversions"
+              aria-label="Conversions"
               .tooltip="${'Turn Into'}"
             >
               ${conversion.icon} ${ArrowDownSmallIcon()}
@@ -156,9 +157,9 @@ const highlightActionGroup = {
         .run();
     };
     return html`
-      <affine-highlight-dropdown
+      <affine-highlight-dropdown-menu
         .updateHighlight=${updateHighlight}
-      ></affine-highlight-dropdown>
+      ></affine-highlight-dropdown-menu>
     `;
   },
 } as const satisfies ToolbarAction;
@@ -169,8 +170,8 @@ export const turnIntoDatabase = {
   icon: DatabaseTableViewIcon(),
   when({ chain }) {
     const middleware = (count = 0) => {
-      return (cx: { selectedBlocks: BlockComponent[] }, next: () => void) => {
-        const { selectedBlocks } = cx;
+      return (ctx: { selectedBlocks: BlockComponent[] }, next: () => void) => {
+        const { selectedBlocks } = ctx;
         if (!selectedBlocks || selectedBlocks.length === count) return;
 
         const allowed = selectedBlocks.every(block =>
@@ -235,7 +236,9 @@ export const turnIntoLinkedDoc = {
 
     selection.clear();
 
-    const autofill = getTitleFromSelectedModels(selectedModels);
+    const autofill = getTitleFromSelectedModels(
+      selectedModels.map(toDraftModel)
+    );
     promptDocTitle(std, autofill)
       .then(async title => {
         if (title === null) return;
@@ -331,12 +334,12 @@ export const builtinToolbarConfig = {
           },
         },
       ],
-      when(cx) {
+      when(ctx) {
         // richText?.dataset.disableAskAi === undefined
         // richText?.dataset.notBlockText === undefined
         // should disable it in database
         // TODO(@fundon): a cleaner API
-        return !cx.flags.isNative();
+        return !ctx.flags.isNative();
       },
     },
     {
@@ -369,12 +372,12 @@ export const builtinToolbarConfig = {
           },
         },
       ],
-      when(cx) {
+      when(ctx) {
         // richText?.dataset.disableAskAi === undefined
         // richText?.dataset.notBlockText === undefined
         // should disable it in database
         // TODO(@fundon): a cleaner API
-        return !cx.flags.isNative();
+        return !ctx.flags.isNative();
       },
     },
   ],

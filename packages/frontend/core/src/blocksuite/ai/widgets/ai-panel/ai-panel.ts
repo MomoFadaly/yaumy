@@ -4,20 +4,15 @@ import {
 } from '@blocksuite/affine/block-std';
 import { GfxControllerIdentifier } from '@blocksuite/affine/block-std/gfx';
 import {
-  AFFINE_FORMAT_BAR_WIDGET,
   AFFINE_VIEWPORT_OVERLAY_WIDGET,
   type AffineViewportOverlayWidget,
   DocModeProvider,
-  NotificationProvider,
-  ThemeProvider,
-  ToolbarFlag,
-  ToolbarRegistryIdentifier,
-} from '@blocksuite/affine-shared/services';
-import {
   getPageRootByElement,
   NotificationProvider,
   stopPropagation,
   ThemeProvider,
+  ToolbarFlag,
+  ToolbarRegistryIdentifier,
 } from '@blocksuite/affine/blocks';
 import { assertExists } from '@blocksuite/affine/global/utils';
 import type { BaseSelection } from '@blocksuite/affine/store';

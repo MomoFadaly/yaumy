@@ -20,7 +20,7 @@ import { repeat } from 'lit-html/directives/repeat.js';
   context: PropTypes.instanceOf(ToolbarContext),
   viewType$: PropTypes.object,
 })
-export class ViewDropdown extends SignalWatcher(ShadowlessElement) {
+export class ViewDropdownMenu extends SignalWatcher(ShadowlessElement) {
   @property({ attribute: false })
   accessor actions!: ToolbarAction[];
 
@@ -87,6 +87,6 @@ export class ViewDropdown extends SignalWatcher(ShadowlessElement) {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'affine-view-dropdown': ViewDropdown;
+    'affine-view-dropdown-menu': ViewDropdownMenu;
   }
 }

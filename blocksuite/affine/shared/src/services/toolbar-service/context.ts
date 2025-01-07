@@ -3,6 +3,7 @@ import {
   BlockSelection,
   type BlockStdScope,
 } from '@blocksuite/block-std';
+import { GfxControllerIdentifier } from '@blocksuite/block-std/gfx';
 import { nextTick } from '@blocksuite/global/utils';
 import type {
   BaseSelection,
@@ -54,6 +55,13 @@ abstract class ToolbarContextBase {
     return this.std.view;
   }
 
+  get activated() {
+    if (this.readonly) return false;
+    if (this.host.event.active) return true;
+    // Selects `embed-synced-doc-block`
+    return this.host.contains(document.activeElement);
+  }
+
   get readonly() {
     return this.store.readonly;
   }
@@ -72,6 +80,10 @@ abstract class ToolbarContextBase {
 
   get isEdgelessMode() {
     return this.editorMode === 'edgeless';
+  }
+
+  get gfx() {
+    return this.std.get(GfxControllerIdentifier);
   }
 
   get themeProvider() {
@@ -104,7 +116,9 @@ abstract class ToolbarContextBase {
     M extends Parameters<typeof matchModels>[1][number],
   >(type: T, ...expected: M[]) {
     const block = this.getCurrentBlockBy<T>(type);
-    return matchModels(block?.model, expected) ? block.model : null;
+    return block?.model && matchModels(block.model, expected)
+      ? block.model
+      : null;
   }
 
   getCurrentBlockComponentBy<
@@ -123,11 +137,9 @@ abstract class ToolbarContextBase {
     return classes.some(k => component instanceof k);
   }
 
-  select(group: string, ...selections: BaseSelection[]) {
+  select(group: string, selections: BaseSelection[] = []) {
     nextTick()
-      .then(() => {
-        this.selection.setGroup(group, selections);
-      })
+      .then(() => this.selection.setGroup(group, selections))
       .catch(console.error);
   }
 

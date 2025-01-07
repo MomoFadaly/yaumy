@@ -269,11 +269,11 @@ test('drag a page card block to another page', async ({ page }) => {
 
   await pageReference.hover();
 
-  const inlineToolbar = page.locator('reference-popup');
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
 
   // convert page reference to card block
-  await inlineToolbar.getByRole('button', { name: 'Switch view' }).click();
-  await inlineToolbar.getByRole('button', { name: 'Card view' }).click();
+  await toolbar.getByRole('button', { name: 'Switch view' }).click();
+  await toolbar.getByRole('button', { name: 'Card view' }).click();
 
   // hover the card block to show the drag handle
   const box = await page.locator('affine-embed-linked-doc-block').boundingBox();

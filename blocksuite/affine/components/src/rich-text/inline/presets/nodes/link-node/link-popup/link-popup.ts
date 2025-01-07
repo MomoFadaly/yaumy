@@ -206,8 +206,8 @@ export class LinkPopup extends WithDisposable(LitElement) {
 
     this.disposables.addFromEvent(this.overlayMask, 'click', e => {
       e.stopPropagation();
+      this.std.host.selection.setGroup('note', []);
       this.abortController.abort();
-      this.std.host.selection.clear();
     });
   }
 

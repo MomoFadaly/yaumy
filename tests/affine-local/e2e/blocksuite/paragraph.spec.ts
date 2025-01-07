@@ -34,15 +34,15 @@ test('heading icon should be updated after change heading level', async ({
 
   await selectAllByKeyboard(page);
   const formatBar = locateFormatBar(page);
-  await formatBar.locator('.paragraph-button').hover();
-  await formatBar.getByTestId('affine:paragraph/h1').click();
+  await formatBar.getByLabel('Conversions').click();
+  await formatBar.getByLabel('Heading 1').click();
 
   await paragraph.hover();
   await expect(page.getByTestId('heading-icon-1')).toBeVisible();
 
   await selectAllByKeyboard(page);
-  await formatBar.locator('.paragraph-button').hover();
-  await formatBar.getByTestId('affine:paragraph/h2').click();
+  await formatBar.getByLabel('Conversions').click();
+  await formatBar.getByLabel('Heading 2').click();
 
   await paragraph.hover();
   await expect(page.getByTestId('heading-icon-1')).toBeHidden();

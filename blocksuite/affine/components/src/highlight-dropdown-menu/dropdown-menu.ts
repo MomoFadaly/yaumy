@@ -27,7 +27,7 @@ type HighlightType = 'color' | 'background';
 @requiredProperties({
   updateHighlight: PropTypes.instanceOf(Function),
 })
-export class HighlightDropdown extends LitElement {
+export class HighlightDropdownMenu extends LitElement {
   @property({ attribute: false })
   accessor updateHighlight!: (styles: AffineTextAttributes) => void;
 
@@ -67,7 +67,7 @@ export class HighlightDropdown extends LitElement {
               : `var(${prefix}-foreground-${color})`;
             return html`
               <editor-menu-action
-                data-testid="${color}"
+                data-testid="foreground-${color}"
                 @click=${() => this._update(value, 'color')}
               >
                 <affine-text-duotone-icon
@@ -75,7 +75,7 @@ export class HighlightDropdown extends LitElement {
                     '--color': value ?? 'var(--affine-text-primary-color)',
                   })}
                 ></affine-text-duotone-icon>
-                <span class="label"
+                <span class="label capitalize"
                   >${isDefault ? `${color} color` : color}</span
                 >
               </editor-menu-action>
@@ -88,6 +88,7 @@ export class HighlightDropdown extends LitElement {
             const value = isDefault ? null : `var(${prefix}-${color})`;
             return html`
               <editor-menu-action
+                data-testid="background-${color}"
                 @click=${() => this._update(value, 'background')}
               >
                 <affine-text-duotone-icon
@@ -97,7 +98,7 @@ export class HighlightDropdown extends LitElement {
                   })}
                 ></affine-text-duotone-icon>
 
-                <span class="label"
+                <span class="label capitalize"
                   >${isDefault ? `${color} background` : color}</span
                 >
               </editor-menu-action>
@@ -111,6 +112,6 @@ export class HighlightDropdown extends LitElement {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'affine-highlight-dropdown': HighlightDropdown;
+    'affine-highlight-dropdown-menu': HighlightDropdownMenu;
   }
 }

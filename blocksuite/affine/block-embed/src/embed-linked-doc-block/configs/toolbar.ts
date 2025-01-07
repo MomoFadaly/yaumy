@@ -29,8 +29,8 @@ export const builtinToolbarConfig = {
   actions: [
     {
       id: 'a.doc-title',
-      content(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      content(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           EmbedLinkedDocBlockComponent
         );
@@ -40,7 +40,7 @@ export const builtinToolbarConfig = {
         if (!model.title) return null;
 
         const originalTitle =
-          cx.workspace.getDoc(model.pageId)?.meta?.title || 'Untitled';
+          ctx.workspace.getDoc(model.pageId)?.meta?.title || 'Untitled';
 
         return html`<affine-linked-doc-title
           .title=${originalTitle}
@@ -54,12 +54,15 @@ export const builtinToolbarConfig = {
         {
           id: 'inline',
           label: 'Inline view',
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedLinkedDocBlockComponent
             );
             component?.covertToInline();
+
+            ctx.selection.clear();
+            ctx.reset();
 
             // track(this.std, model, this._viewType, 'SelectedView', {
             //       control: 'selected view',
@@ -75,13 +78,13 @@ export const builtinToolbarConfig = {
         {
           id: 'embed',
           label: 'Embed view',
-          when(cx) {
-            return cx.store
+          when(ctx) {
+            return ctx.store
               .get(FeatureFlagService)
               .getFlag('enable_synced_doc_block');
           },
-          disabled(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          disabled(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedLinkedDocBlockComponent
             );
@@ -92,15 +95,15 @@ export const builtinToolbarConfig = {
             const model = component.model;
 
             // same doc
-            if (model.pageId === cx.store.id) return true;
+            if (model.pageId === ctx.store.id) return true;
 
             // linking to block
             if (referenceToNode(model)) return true;
 
             return false;
           },
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedLinkedDocBlockComponent
             );
@@ -113,8 +116,11 @@ export const builtinToolbarConfig = {
           },
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, EmbedLinkedDocModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(
+          BlockSelection,
+          EmbedLinkedDocModel
+        );
         if (!model) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
@@ -129,12 +135,12 @@ export const builtinToolbarConfig = {
 
         return html`${keyed(
           model,
-          html`<affine-view-dropdown
+          html`<affine-view-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .toggle=${toggle}
             .viewType$=${signal(actions[1].label)}
-          ></affine-view-dropdown>`
+          ></affine-view-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -150,8 +156,11 @@ export const builtinToolbarConfig = {
           label: 'Small horizontal style',
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, EmbedLinkedDocModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(
+          BlockSelection,
+          EmbedLinkedDocModel
+        );
         if (!model) return null;
 
         const actions = this.actions.map(action => ({
@@ -173,12 +182,12 @@ export const builtinToolbarConfig = {
 
         return html`${keyed(
           model,
-          html`<affine-card-style-dropdown
+          html`<affine-card-style-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .toggle=${toggle}
             .style$=${model.style$}
-          ></affine-card-style-dropdown>`
+          ></affine-card-style-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -186,8 +195,8 @@ export const builtinToolbarConfig = {
       id: 'd.caption',
       tooltip: 'Caption',
       icon: CaptionIcon(),
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           EmbedLinkedDocBlockComponent
         );
@@ -206,14 +215,14 @@ export const builtinToolbarConfig = {
           id: 'copy',
           label: 'Copy',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
-            const slice = Slice.fromModels(cx.store, [model]);
-            cx.clipboard
+            const slice = Slice.fromModels(ctx.store, [model]);
+            ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(cx.host, 'Copied to clipboard'))
+              .then(() => toast(ctx.host, 'Copied to clipboard'))
               .catch(console.error);
           },
         },
@@ -221,15 +230,15 @@ export const builtinToolbarConfig = {
           id: 'duplicate',
           label: 'Duplicate',
           icon: DuplicateIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
             const { flavour, parent } = model;
             const props = getBlockProps(model);
             const index = parent?.children.indexOf(model);
 
-            cx.store.addBlock(flavour, props, parent, index);
+            ctx.store.addBlock(flavour, props, parent, index);
           },
         },
       ],
@@ -240,11 +249,11 @@ export const builtinToolbarConfig = {
       label: 'Delete',
       icon: DeleteIcon(),
       variant: 'destructive',
-      run(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection);
+      run(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection);
         if (!model) return;
 
-        cx.store.deleteBlock(model);
+        ctx.store.deleteBlock(model);
       },
     },
   ],

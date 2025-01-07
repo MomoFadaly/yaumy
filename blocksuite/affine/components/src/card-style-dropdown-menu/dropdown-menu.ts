@@ -43,7 +43,7 @@ const cardStyleMap: Record<ColorScheme, Record<string, TemplateResult>> = {
   context: PropTypes.instanceOf(ToolbarContext),
   style$: PropTypes.object,
 })
-export class CardStyleDropdown extends SignalWatcher(ShadowlessElement) {
+export class CardStyleDropdownMenu extends SignalWatcher(ShadowlessElement) {
   @property({ attribute: false })
   accessor actions!: ToolbarAction[];
 
@@ -110,6 +110,6 @@ export class CardStyleDropdown extends SignalWatcher(ShadowlessElement) {
 
 declare global {
   interface HTMLElementTagNameMap {
-    'affine-card-style-dropdown': CardStyleDropdown;
+    'affine-card-style-dropdown-menu': CardStyleDropdownMenu;
   }
 }
