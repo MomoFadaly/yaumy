@@ -28,8 +28,8 @@ export const builtinToolbarConfig = {
   actions: [
     {
       id: 'a.preview',
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
         if (!model) return null;
 
         const { url } = model;
@@ -43,8 +43,8 @@ export const builtinToolbarConfig = {
         {
           id: 'inline',
           label: 'Inline view',
-          run(cx) {
-            const model = cx.getCurrentModelBy(
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(
               BlockSelection,
               BookmarkBlockModel
             );
@@ -60,10 +60,12 @@ export const builtinToolbarConfig = {
 
             const text = new Text(yText);
 
-            // TODO(@fundon): should select new block
-            cx.store.addBlock('affine:paragraph', { text }, parent, index);
+            ctx.reset();
 
-            cx.store.deleteBlock(model);
+            // TODO(@fundon): should select new block
+            ctx.store.addBlock('affine:paragraph', { text }, parent, index);
+
+            ctx.store.deleteBlock(model);
 
             // inline
             // track(this.std, model, this._viewType, 'SelectedView', {
@@ -80,21 +82,21 @@ export const builtinToolbarConfig = {
         {
           id: 'embed',
           label: 'Embed view',
-          disabled(cx) {
-            const model = cx.getCurrentModelBy(
+          disabled(ctx) {
+            const model = ctx.getCurrentModelBy(
               BlockSelection,
               BookmarkBlockModel
             );
             if (!model) return true;
 
-            const options = cx.std
+            const options = ctx.std
               .get(EmbedOptionProvider)
               .getEmbedBlockOptions(model.url);
 
             return options?.viewType !== 'embed';
           },
-          run(cx) {
-            const model = cx.getCurrentModelBy(
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(
               BlockSelection,
               BookmarkBlockModel
             );
@@ -103,7 +105,7 @@ export const builtinToolbarConfig = {
             const { caption, url, style, parent } = model;
             const index = parent?.children.indexOf(model);
 
-            const options = cx.std
+            const options = ctx.std
               .get(EmbedOptionProvider)
               .getEmbedBlockOptions(url);
 
@@ -115,7 +117,7 @@ export const builtinToolbarConfig = {
               ? style
               : styles.find(s => s !== 'vertical' && s !== 'cube');
 
-            cx.store.addBlock(
+            ctx.store.addBlock(
               flavour,
               {
                 url,
@@ -126,7 +128,7 @@ export const builtinToolbarConfig = {
               index
             );
 
-            cx.store.deleteBlock(model);
+            ctx.store.deleteBlock(model);
 
             // embed
             // track(this.std, model, this._viewType, 'SelectedView', {
@@ -136,8 +138,8 @@ export const builtinToolbarConfig = {
           },
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
         if (!model) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
@@ -152,12 +154,12 @@ export const builtinToolbarConfig = {
 
         return html`${keyed(
           model,
-          html`<affine-view-dropdown
+          html`<affine-view-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .toggle=${toggle}
             .viewType$=${signal(actions[1].label)}
-          ></affine-view-dropdown>`
+          ></affine-view-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -173,8 +175,8 @@ export const builtinToolbarConfig = {
           label: 'Small horizontal style',
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection, BookmarkBlockModel);
         if (!model) return null;
 
         const actions = this.actions.map(action => ({
@@ -197,12 +199,12 @@ export const builtinToolbarConfig = {
 
         return html`${keyed(
           model,
-          html`<affine-card-style-dropdown
+          html`<affine-card-style-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .toggle=${toggle}
             .style$=${model.style$}
-          ></affine-card-style-dropdown>`
+          ></affine-card-style-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -210,8 +212,8 @@ export const builtinToolbarConfig = {
       id: 'd.caption',
       tooltip: 'Caption',
       icon: CaptionIcon(),
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           BookmarkBlockComponent
         );
@@ -247,14 +249,14 @@ export const builtinToolbarConfig = {
           id: 'copy',
           label: 'Copy',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+          run(ctx) {
+            const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
             if (!model) return;
 
-            const slice = Slice.fromModels(cx.store, [model]);
-            cx.clipboard
+            const slice = Slice.fromModels(ctx.store, [model]);
+            ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(cx.host, 'Copied to clipboard'))
+              .then(() => toast(ctx.host, 'Copied to clipboard'))
               .catch(console.error);
           },
         },
@@ -262,15 +264,15 @@ export const builtinToolbarConfig = {
           id: 'duplicate',
           label: 'Duplicate',
           icon: DuplicateIcon(),
-          run(cx) {
-            const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+          run(ctx) {
+            const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
             if (!model) return;
 
             const { flavour, parent } = model;
             const props = getBlockProps(model);
             const index = parent?.children.indexOf(model);
 
-            cx.store.addBlock(flavour, props, parent, index);
+            ctx.store.addBlock(flavour, props, parent, index);
           },
         },
       ],
@@ -280,8 +282,8 @@ export const builtinToolbarConfig = {
       id: 'b.refresh',
       label: 'Reload',
       icon: ResetIcon(),
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           BookmarkBlockComponent
         );
@@ -294,11 +296,11 @@ export const builtinToolbarConfig = {
       label: 'Delete',
       icon: DeleteIcon(),
       variant: 'destructive',
-      run(cx) {
-        const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+      run(ctx) {
+        const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
         if (!model) return;
 
-        cx.store.deleteBlock(model);
+        ctx.store.deleteBlock(model);
       },
     },
   ],

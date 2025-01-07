@@ -20,6 +20,7 @@ import {
   type TableViewSelectionWithType,
 } from '../selection';
 import type { TableColumn } from '../table-view-manager.js';
+import type { TableGroup } from './group.js';
 
 export class DatabaseCellContainer extends SignalWatcher(
   WithDisposable(ShadowlessElement)
@@ -89,7 +90,7 @@ export class DatabaseCellContainer extends SignalWatcher(
   }
 
   private get groupKey() {
-    return this.closest('affine-data-view-table-group')?.group?.key;
+    return this.closest<TableGroup>('affine-data-view-table-group')?.group?.key;
   }
 
   private get readonly() {

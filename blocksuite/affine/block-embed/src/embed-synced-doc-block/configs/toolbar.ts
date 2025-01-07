@@ -2,39 +2,120 @@ import { toast } from '@blocksuite/affine-components/toast';
 import { EmbedSyncedDocModel } from '@blocksuite/affine-model';
 import {
   ActionPlacement,
+  type OpenDocMode,
   type ToolbarAction,
   type ToolbarActionGroup,
+  type ToolbarContext,
   type ToolbarModuleConfig,
 } from '@blocksuite/affine-shared/services';
 import { getBlockProps } from '@blocksuite/affine-shared/utils';
 import { BlockSelection } from '@blocksuite/block-std';
 import {
+  ArrowDownSmallIcon,
   CaptionIcon,
   CopyIcon,
   DeleteIcon,
   DuplicateIcon,
+  ExpandFullIcon,
+  OpenInNewIcon,
 } from '@blocksuite/icons/lit';
 import { Slice } from '@blocksuite/store';
 import { signal } from '@preact/signals-core';
 import { html } from 'lit';
+import { ifDefined } from 'lit/directives/if-defined.js';
 import { keyed } from 'lit/directives/keyed.js';
+import { repeat } from 'lit/directives/repeat.js';
 
 import { EmbedSyncedDocBlockComponent } from '../embed-synced-doc-block';
 
 export const builtinToolbarConfig = {
   actions: [
     {
+      placement: ActionPlacement.Start,
+      id: 'A.open-doc',
+      actions: [
+        {
+          id: 'open-in-active-view',
+          label: 'Open this doc',
+          icon: ExpandFullIcon(),
+        },
+      ],
+      content(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
+          BlockSelection,
+          EmbedSyncedDocBlockComponent
+        );
+        if (!component) return null;
+
+        const actions = this.actions
+          .map<ToolbarAction>(action => {
+            const shouldOpenInActiveView = action.id === 'open-in-active-view';
+            const allowed =
+              typeof action.when === 'function'
+                ? action.when(ctx)
+                : (action.when ?? true);
+            return {
+              ...action,
+              disabled: shouldOpenInActiveView
+                ? component.model.pageId === ctx.store.id
+                : false,
+              when: allowed,
+              run: (_ctx: ToolbarContext) =>
+                component.open({
+                  openMode: action.id as OpenDocMode,
+                }),
+            };
+          })
+          .filter(action => {
+            if (typeof action.when === 'function') return action.when(ctx);
+            return action.when ?? true;
+          });
+
+        return html`
+          <editor-menu-button
+            .contentPadding="${'8px'}"
+            .button=${html`
+              <editor-icon-button aria-label="Open doc" .tooltip=${'Open doc'}>
+                ${OpenInNewIcon()} ${ArrowDownSmallIcon()}
+              </editor-icon-button>
+            `}
+          >
+            <div data-size="small" data-orientation="vertical">
+              ${repeat(
+                actions,
+                action => action.id,
+                ({ label, icon, run, disabled }) => html`
+                  <editor-menu-action
+                    aria-label=${ifDefined(label)}
+                    ?disabled=${ifDefined(
+                      typeof disabled === 'function' ? disabled(ctx) : disabled
+                    )}
+                    @click=${() => run?.(ctx)}
+                  >
+                    ${icon}<span class="label">${label}</span>
+                  </editor-menu-action>
+                `
+              )}
+            </div>
+          </editor-menu-button>
+        `;
+      },
+    } satisfies ToolbarActionGroup<ToolbarAction>,
+    {
       id: 'a.conversions',
       actions: [
         {
           id: 'inline',
           label: 'Inline view',
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedSyncedDocBlockComponent
             );
             component?.covertToInline();
+
+            ctx.select('note');
+            ctx.reset();
 
             // inline
             // track(this.std, model, this._viewType, 'SelectedView', {
@@ -46,8 +127,8 @@ export const builtinToolbarConfig = {
         {
           id: 'card',
           label: 'Card view',
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedSyncedDocBlockComponent
             );
@@ -66,8 +147,11 @@ export const builtinToolbarConfig = {
           disabled: true,
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, EmbedSyncedDocModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(
+          BlockSelection,
+          EmbedSyncedDocModel
+        );
         if (!model) return null;
 
         const actions = this.actions.map(action => ({ ...action }));
@@ -83,12 +167,12 @@ export const builtinToolbarConfig = {
 
         return html`${keyed(
           model,
-          html`<affine-view-dropdown
+          html`<affine-view-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .toggle=${toggle}
             .viewType$=${signal(actions[2].label)}
-          ></affine-view-dropdown>`
+          ></affine-view-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -96,8 +180,8 @@ export const builtinToolbarConfig = {
       id: 'b.caption',
       tooltip: 'Caption',
       icon: CaptionIcon(),
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           EmbedSyncedDocBlockComponent
         );
@@ -116,14 +200,14 @@ export const builtinToolbarConfig = {
           id: 'copy',
           label: 'Copy',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
-            const slice = Slice.fromModels(cx.store, [model]);
-            cx.clipboard
+            const slice = Slice.fromModels(ctx.store, [model]);
+            ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(cx.host, 'Copied to clipboard'))
+              .then(() => toast(ctx.host, 'Copied to clipboard'))
               .catch(console.error);
           },
         },
@@ -131,15 +215,15 @@ export const builtinToolbarConfig = {
           id: 'duplicate',
           label: 'Duplicate',
           icon: DuplicateIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
             const { flavour, parent } = model;
             const props = getBlockProps(model);
             const index = parent?.children.indexOf(model);
 
-            cx.store.addBlock(flavour, props, parent, index);
+            ctx.store.addBlock(flavour, props, parent, index);
           },
         },
       ],
@@ -150,11 +234,11 @@ export const builtinToolbarConfig = {
       label: 'Delete',
       icon: DeleteIcon(),
       variant: 'destructive',
-      run(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection);
+      run(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection);
         if (!model) return;
 
-        cx.store.deleteBlock(model);
+        ctx.store.deleteBlock(model);
       },
     },
   ],

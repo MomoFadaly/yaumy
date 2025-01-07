@@ -8,18 +8,13 @@ import { EditorService } from '@affine/core/modules/editor';
 import { copyLinkToBlockStdScopeClipboard } from '@affine/core/utils/clipboard';
 import { I18n } from '@affine/i18n';
 import { track } from '@affine/track';
+import { BlockSelection, TextSelection } from '@blocksuite/affine/block-std';
 import {
-  BlockSelection,
-  SurfaceSelection,
-  TextSelection,
-} from '@blocksuite/affine/block-std';
-import type {
   GfxBlockElementModel,
   GfxPrimitiveElementModel,
 } from '@blocksuite/affine/block-std/gfx';
 import {
   ActionPlacement,
-  AffineLink,
   AffineReference,
   type BookmarkBlockComponent,
   type EmbedFigmaBlockComponent,
@@ -32,6 +27,7 @@ import {
   type EmbedYoutubeBlockComponent,
   GenerateDocUrlProvider,
   getDocContentWithMaxLength,
+  getSelectedModelsCommand,
   ImageSelection,
   isPeekable,
   type MenuContext,
@@ -42,7 +38,6 @@ import {
   peek,
   toast,
   toggleEmbedCardEditModal,
-  toggleLinkPopup,
   toggleReferencePopup,
   type ToolbarAction,
   type ToolbarActionGroup,
@@ -187,57 +182,106 @@ function createCopyLinkToBlockMenuItem(
   };
 }
 
-export const toolbarMoreMenuConfig = {
-  actions: [
-    {
-      placement: ActionPlacement.More,
-      id: 'a.clipboard',
-      actions: [
-        {
-          id: 'copy-as-image',
-          label: 'Copy as Image',
-          icon: CopyAsImgaeIcon(),
-          when: ({ isEdgelessMode, selection }) =>
-            isEdgelessMode && selection.getGroup('note').length === 0,
-          run() {},
-        },
-        {
-          id: 'copy-link-to-block',
-          label: 'Copy link to block',
-          icon: LinkIcon(),
-          when: ({ isPageMode, selection }) => {
-            const items = selection
-              .getGroup('note')
-              .filter(item =>
-                [TextSelection, BlockSelection, ImageSelection].some(t =>
-                  item.is(t)
-                )
-              );
-            const hasNoteSelection = items.length > 0;
-
-            if (isPageMode) {
-              const item = items[0];
-              if (item && item.is(TextSelection)) {
-                return (
-                  !item.isCollapsed() &&
-                  Boolean(item.from.length + (item.to?.length ?? 0))
-                );
-              }
-              return hasNoteSelection;
-            }
-
-            // Linking blocks in notes is currently not supported in edgeless mode.
-            if (hasNoteSelection) return false;
-
-            // Linking single block/element in edgeless mode.
-            return selection.filter(SurfaceSelection).length === 1;
+export function createToolbarMoreMenuConfigV2(baseUrl?: string) {
+  return {
+    actions: [
+      {
+        placement: ActionPlacement.More,
+        id: 'a.clipboard',
+        actions: [
+          {
+            id: 'copy-as-image',
+            label: 'Copy as Image',
+            icon: CopyAsImgaeIcon(),
+            when: ({ isEdgelessMode, gfx }) =>
+              isEdgelessMode && gfx.selection.selectedElements.length > 0,
           },
-          run() {},
-        },
-      ],
-    },
-  ],
-} as const satisfies ToolbarModuleConfig;
+          {
+            id: 'copy-link-to-block',
+            label: 'Copy link to block',
+            icon: LinkIcon(),
+            when: ({ isPageMode, selection, gfx }) => {
+              const items = selection
+                .getGroup('note')
+                .filter(item =>
+                  [TextSelection, BlockSelection, ImageSelection].some(t =>
+                    item.is(t)
+                  )
+                );
+              const hasNoteSelection = items.length > 0;
+
+              if (isPageMode) {
+                const item = items[0];
+                if (item && item.is(TextSelection)) {
+                  return (
+                    !item.isCollapsed() &&
+                    Boolean(item.from.length + (item.to?.length ?? 0))
+                  );
+                }
+                return hasNoteSelection;
+              }
+
+              // Linking blocks in notes is currently not supported under edgeless.
+              if (hasNoteSelection) return false;
+
+              // Linking single block/element in edgeless mode.
+              return gfx.selection.selectedElements.length === 1;
+            },
+            run({ isPageMode, std, store, gfx, workspace, editorMode }) {
+              const pageId = store.doc.id;
+              const mode = editorMode;
+              const workspaceId = workspace.id;
+              const options: UseSharingUrl = { workspaceId, pageId, mode };
+              let type = '';
+
+              if (isPageMode) {
+                const [ok, { selectedModels = [] }] = std.command.exec(
+                  getSelectedModelsCommand
+                );
+
+                if (!ok || !selectedModels.length) return;
+
+                options.blockIds = selectedModels.map(model => model.id);
+                type = selectedModels[0].flavour;
+              } else {
+                const firstElement = gfx.selection.firstElement;
+                if (!firstElement) return;
+
+                const ids = [firstElement.id];
+                if (firstElement instanceof GfxPrimitiveElementModel) {
+                  type = firstElement.type;
+                  options.elementIds = ids;
+                } else if (firstElement instanceof GfxBlockElementModel) {
+                  type = firstElement.flavour;
+                  options.blockIds = ids;
+                }
+              }
+
+              if (!type) return;
+
+              const str = generateUrl({
+                ...options,
+                baseUrl: baseUrl ?? location.origin,
+              });
+
+              if (!str) return;
+
+              copyLinkToBlockStdScopeClipboard(str, std.clipboard)
+                .then(ok => {
+                  if (!ok) return;
+
+                  notify.success({ title: I18n['Copied link to clipboard']() });
+                })
+                .catch(console.error);
+
+              track.doc.editor.toolbar.copyBlockToLink({ type });
+            },
+          },
+        ],
+      },
+    ],
+  } as const satisfies ToolbarModuleConfig;
+}
 
 export function createExternalLinkableToolbarConfig(
   kclass:
@@ -256,8 +300,8 @@ export function createExternalLinkableToolbarConfig(
             id: 'copy-link',
             tooltip: 'Copy link',
             icon: CopyIcon(),
-            run(cx) {
-              const model = cx.getCurrentBlockComponentBy(
+            run(ctx) {
+              const model = ctx.getCurrentBlockComponentBy(
                 BlockSelection,
                 kclass
               )?.model;
@@ -266,7 +310,7 @@ export function createExternalLinkableToolbarConfig(
               const { url } = model;
 
               navigator.clipboard.writeText(url).catch(console.error);
-              toast(cx.host, 'Copied link to clipboard');
+              toast(ctx.host, 'Copied link to clipboard');
 
               // TODO(@fundon): add tracking event
               // track(this.std, model, this._viewType, 'CopiedLink', {
@@ -294,27 +338,27 @@ export function createExternalLinkableToolbarConfig(
             id: 'edit',
             tooltip: 'Edit',
             icon: EditIcon(),
-            run(cx) {
-              const component = cx.getCurrentBlockComponentBy(
+            run(ctx) {
+              const component = ctx.getCurrentBlockComponentBy(
                 BlockSelection,
                 kclass
               );
               if (!component) return;
 
-              cx.hide();
+              ctx.hide();
 
               const model = component.model;
               const abortController = new AbortController();
-              abortController.signal.onabort = () => cx.show();
+              abortController.signal.onabort = () => ctx.show();
 
               toggleEmbedCardEditModal(
-                cx.host,
+                ctx.host,
                 model,
                 'card',
                 undefined,
                 undefined,
                 (_std, _component, props) => {
-                  cx.store.updateBlock(model, props);
+                  ctx.store.updateBlock(model, props);
                   component.requestUpdate();
                 },
                 abortController
@@ -360,30 +404,36 @@ function createOpenDocActionGroup(
     placement: ActionPlacement.Start,
     id: 'A.open-doc',
     actions: openDocActions,
-    content(cx) {
-      const component = cx.getCurrentBlockComponentBy(BlockSelection, klass);
+    content(ctx) {
+      const component = ctx.getCurrentBlockComponentBy(BlockSelection, klass);
       if (!component) return null;
 
       const actions = this.actions
         .map<ToolbarAction>(action => {
-          const isOpenInCenterPeek = action.id === 'open-in-center-peek';
-          const isOpenInActiveView = action.id === 'open-in-active-view';
+          const shouldOpenInCenterPeek = action.id === 'open-in-center-peek';
+          const shouldOpenInActiveView = action.id === 'open-in-active-view';
+          const allowed =
+            typeof action.when === 'function'
+              ? action.when(ctx)
+              : (action.when ?? true);
           return {
             ...action,
-            disabled: isOpenInActiveView
-              ? component.model.pageId === cx.store.id
+            disabled: shouldOpenInActiveView
+              ? component.model.pageId === ctx.store.id
               : false,
-            when: isOpenInCenterPeek ? isPeekable(component) : true,
-            run: isOpenInCenterPeek
-              ? (_cx: ToolbarContext) => peek(component)
-              : (_cx: ToolbarContext) =>
+            when:
+              allowed &&
+              (shouldOpenInCenterPeek ? isPeekable(component) : true),
+            run: shouldOpenInCenterPeek
+              ? (_ctx: ToolbarContext) => peek(component)
+              : (_ctx: ToolbarContext) =>
                   component.open({
                     openMode: action.id as OpenDocMode,
                   }),
           };
         })
         .filter(action => {
-          if (typeof action.when === 'function') return action.when(cx);
+          if (typeof action.when === 'function') return action.when(ctx);
           return action.when ?? true;
         });
 
@@ -391,7 +441,7 @@ function createOpenDocActionGroup(
         <editor-menu-button
           .contentPadding="${'8px'}"
           .button=${html`
-            <editor-icon-button aria-label="Open-doc">
+            <editor-icon-button aria-label="Open doc" .tooltip=${'Open doc'}>
               ${OpenInNewIcon()} ${ArrowDownSmallIcon()}
             </editor-icon-button>
           `}
@@ -404,9 +454,9 @@ function createOpenDocActionGroup(
                 <editor-menu-action
                   aria-label=${ifDefined(label)}
                   ?disabled=${ifDefined(
-                    typeof disabled === 'function' ? disabled(cx) : disabled
+                    typeof disabled === 'function' ? disabled(ctx) : disabled
                   )}
-                  @click=${() => run?.(cx)}
+                  @click=${() => run?.(ctx)}
                 >
                   ${icon}<span class="label">${label}</span>
                 </editor-menu-action>
@@ -429,8 +479,8 @@ export const embedLinkedDocToolbarConfig = {
           id: 'copy-link',
           tooltip: 'Copy link',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(
               BlockSelection,
               EmbedLinkedDocModel
             );
@@ -438,14 +488,14 @@ export const embedLinkedDocToolbarConfig = {
 
             const { pageId, params } = model;
 
-            const url = cx.std
+            const url = ctx.std
               .getOptional(GenerateDocUrlProvider)
               ?.generateDocUrl(pageId, params);
 
             if (!url) return;
 
             navigator.clipboard.writeText(url).catch(console.error);
-            toast(cx.host, 'Copied link to clipboard');
+            toast(ctx.host, 'Copied link to clipboard');
 
             // TODO(@fundon): add tracking event
           },
@@ -454,22 +504,22 @@ export const embedLinkedDocToolbarConfig = {
           id: 'edit',
           tooltip: 'Edit',
           icon: EditIcon(),
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedLinkedDocBlockComponent
             );
             if (!component) return;
 
-            cx.hide();
+            ctx.hide();
 
             const model = component.model;
-            const doc = cx.workspace.getDoc(model.pageId);
+            const doc = ctx.workspace.getDoc(model.pageId);
             const abortController = new AbortController();
-            abortController.signal.onabort = () => cx.show();
+            abortController.signal.onabort = () => ctx.show();
 
             toggleEmbedCardEditModal(
-              cx.host,
+              ctx.host,
               component.model,
               'card',
               doc
@@ -483,7 +533,7 @@ export const embedLinkedDocToolbarConfig = {
                 notifyLinkedDocClearedAliases(std);
               },
               (_std, _component, props) => {
-                cx.store.updateBlock(model, props);
+                ctx.store.updateBlock(model, props);
                 component.requestUpdate();
               },
               abortController
@@ -506,8 +556,8 @@ export const embedSyncedDocToolbarConfig = {
           id: 'copy-link',
           tooltip: 'Copy link',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(
               BlockSelection,
               EmbedSyncedDocModel
             );
@@ -515,14 +565,14 @@ export const embedSyncedDocToolbarConfig = {
 
             const { pageId, params } = model;
 
-            const url = cx.std
+            const url = ctx.std
               .getOptional(GenerateDocUrlProvider)
               ?.generateDocUrl(pageId, params);
 
             if (!url) return;
 
             navigator.clipboard.writeText(url).catch(console.error);
-            toast(cx.host, 'Copied link to clipboard');
+            toast(ctx.host, 'Copied link to clipboard');
 
             // TODO(@fundon): add tracking event
           },
@@ -531,22 +581,22 @@ export const embedSyncedDocToolbarConfig = {
           id: 'edit',
           tooltip: 'Edit',
           icon: EditIcon(),
-          run(cx) {
-            const component = cx.getCurrentBlockComponentBy(
+          run(ctx) {
+            const component = ctx.getCurrentBlockComponentBy(
               BlockSelection,
               EmbedSyncedDocBlockComponent
             );
             if (!component) return;
 
-            cx.hide();
+            ctx.hide();
 
             const model = component.model;
-            const doc = cx.workspace.getDoc(model.pageId);
+            const doc = ctx.workspace.getDoc(model.pageId);
             const abortController = new AbortController();
-            abortController.signal.onabort = () => cx.show();
+            abortController.signal.onabort = () => ctx.show();
 
             toggleEmbedCardEditModal(
-              cx.host,
+              ctx.host,
               model,
               'embed',
               doc ? { title: doc.meta?.title } : undefined,
@@ -571,31 +621,36 @@ export const inlineReferenceToolbarConfig = {
       placement: ActionPlacement.Start,
       id: 'A.open-doc',
       actions: openDocActions,
-      content(cx) {
-        const registry = cx.toolbarRegistry;
+      content(ctx) {
+        const registry = ctx.toolbarRegistry;
         const target = registry.message$.peek()?.element;
         if (!(target instanceof AffineReference)) return null;
 
         const actions = this.actions
           .map<ToolbarAction>(action => {
-            const isOpenInCenterPeek = action.id === 'open-in-center-peek';
-            const isOpenInActiveView = action.id === 'open-in-active-view';
+            const shouldOpenInCenterPeek = action.id === 'open-in-center-peek';
+            const shouldOpenInActiveView = action.id === 'open-in-active-view';
+            const allowed =
+              typeof action.when === 'function'
+                ? action.when(ctx)
+                : (action.when ?? true);
             return {
               ...action,
-              disabled: isOpenInActiveView
-                ? target.referenceInfo.pageId === cx.store.id
+              disabled: shouldOpenInActiveView
+                ? target.referenceInfo.pageId === ctx.store.id
                 : false,
-              when: isOpenInCenterPeek ? isPeekable(target) : true,
-              run: isOpenInCenterPeek
-                ? (_cx: ToolbarContext) => peek(target)
-                : (_cx: ToolbarContext) =>
+              when:
+                allowed && (shouldOpenInCenterPeek ? isPeekable(target) : true),
+              run: shouldOpenInCenterPeek
+                ? (_ctx: ToolbarContext) => peek(target)
+                : (_ctx: ToolbarContext) =>
                     target.open({
                       openMode: action.id as OpenDocMode,
                     }),
             };
           })
           .filter(action => {
-            if (typeof action.when === 'function') return action.when(cx);
+            if (typeof action.when === 'function') return action.when(ctx);
             return action.when ?? true;
           });
 
@@ -605,7 +660,10 @@ export const inlineReferenceToolbarConfig = {
             <editor-menu-button
               .contentPadding="${'8px'}"
               .button=${html`
-                <editor-icon-button aria-label="Open-doc">
+                <editor-icon-button
+                  aria-label="Open doc"
+                  .tooltip=${'Open doc'}
+                >
                   ${OpenInNewIcon()} ${ArrowDownSmallIcon()}
                 </editor-icon-button>
               `}
@@ -618,9 +676,11 @@ export const inlineReferenceToolbarConfig = {
                     <editor-menu-action
                       aria-label=${ifDefined(label)}
                       ?disabled=${ifDefined(
-                        typeof disabled === 'function' ? disabled(cx) : disabled
+                        typeof disabled === 'function'
+                          ? disabled(ctx)
+                          : disabled
                       )}
-                      @click=${() => run?.(cx)}
+                      @click=${() => run?.(ctx)}
                     >
                       ${icon}<span class="label">${label}</span>
                     </editor-menu-action>
@@ -633,45 +693,44 @@ export const inlineReferenceToolbarConfig = {
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
     {
-      id: 'a.doc-title.after.copy-link-and-edit',
+      id: 'b.copy-link-and-edit',
       actions: [
         {
           id: 'copy-link',
           tooltip: 'Copy link',
           icon: CopyIcon(),
-          run(cx) {
-            const registry = cx.toolbarRegistry;
-            const target = registry.message$.peek()?.element;
+          run(ctx) {
+            const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineReference)) return;
 
             const { pageId, params } = target.referenceInfo;
 
-            const url = cx.std
+            const url = ctx.std
               .getOptional(GenerateDocUrlProvider)
               ?.generateDocUrl(pageId, params);
 
             if (!url) return;
 
             // hides
-            registry.message$.value = null;
+            ctx.reset();
 
             navigator.clipboard.writeText(url).catch(console.error);
-            toast(cx.host, 'Copied link to clipboard');
+            toast(ctx.host, 'Copied link to clipboard');
 
             // TODO(@fundon): add tracking event
-            // track(cx.std, 'CopiedLink', { control: 'copy link' });
+            // track(ctx.std, 'CopiedLink', { control: 'copy link' });
           },
         },
         {
           id: 'edit',
           tooltip: 'Edit',
           icon: EditIcon(),
-          run(cx) {
-            const registry = cx.toolbarRegistry;
-            const target = registry.message$.peek()?.element;
+          run(ctx) {
+            const target = ctx.message$.peek()?.element;
             if (!(target instanceof AffineReference)) return;
 
-            // cx.hide();
+            // ctx.hide();
+            ctx.reset();
 
             const { inlineEditor, selfInlineRange, docTitle, referenceInfo } =
               target;
@@ -679,7 +738,7 @@ export const inlineReferenceToolbarConfig = {
 
             const abortController = new AbortController();
             const popover = toggleReferencePopup(
-              cx.std,
+              ctx.std,
               docTitle,
               referenceInfo,
               inlineEditor,
@@ -688,69 +747,7 @@ export const inlineReferenceToolbarConfig = {
             );
             abortController.signal.onabort = () => popover.remove();
 
-            // track(cx.std, 'OpenedAliasPopup', { control: 'edit' });
-          },
-        },
-      ],
-    },
-  ],
-} as const satisfies ToolbarModuleConfig;
-
-export const inlineLinkToolbarConfig = {
-  actions: [
-    {
-      id: 'a.preview.after.copy-link-and-edit',
-      actions: [
-        {
-          id: 'copy-link',
-          tooltip: 'Copy link',
-          icon: CopyIcon(),
-          run(cx) {
-            const registry = cx.toolbarRegistry;
-            const target = registry.message$.peek()?.element;
-            if (!(target instanceof AffineLink)) return;
-
-            const { link } = target;
-
-            if (!link) return;
-
-            // hides
-            // TODO(@fundon): use a cleaner API
-            registry.message$.value = null;
-
-            navigator.clipboard.writeText(link).catch(console.error);
-            toast(cx.host, 'Copied link to clipboard');
-
-            // TODO(@fundon): add tracking event
-            // track(cx.std, 'CopiedLink', { control: 'copy link' });
-          },
-        },
-        {
-          id: 'edit',
-          tooltip: 'Edit',
-          icon: EditIcon(),
-          run(cx) {
-            const registry = cx.toolbarRegistry;
-            const target = registry.message$.peek()?.element;
-            if (!(target instanceof AffineLink)) return;
-
-            // cx.hide();
-
-            const { inlineEditor, selfInlineRange } = target;
-
-            if (!inlineEditor || !selfInlineRange) return;
-
-            const abortController = new AbortController();
-            const popover = toggleLinkPopup(
-              cx.std,
-              'edit',
-              inlineEditor,
-              selfInlineRange,
-              abortController
-            );
-            abortController.signal.onabort = () => popover.remove();
-
-            // track(cx.std, 'OpenedAliasPopup', { control: 'edit' });
+            // track(ctx.std, 'OpenedAliasPopup', { control: 'edit' });
           },
         },
       ],

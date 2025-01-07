@@ -1,4 +1,5 @@
 import { DatabaseSelection } from '@blocksuite/affine-block-database';
+import { TableSelection } from '@blocksuite/affine-block-table';
 import { EditorToolbar } from '@blocksuite/affine-components/toolbar';
 import {
   CodeBlockModel,
@@ -96,75 +97,13 @@ export class AffineToolbarWidget extends WidgetComponent {
     // document.body.append(toolbar);
     this.shadowRoot!.append(toolbar);
 
-    disposables.add(
-      effect(() => {
-        const value = flags.value$.value;
-        const flavour = flavour$.value;
-        if (flags.contains(Flag.Hiding, value)) return;
-        if (
-          !flags.contains(
-            Flag.Hovering | Flag.Text | Flag.Native | Flag.Block,
-            value
-          )
-        )
-          return;
-
-        // TODO(@fundon): improves here
-        const isNote = flavour === 'affine:note';
-        let placement = isNote ? ('top' as Placement) : undefined;
-        let virtualEl: ReferenceElement | null = null;
-
-        if (flags.check(Flag.Hovering, value)) {
-          const message = message$.value;
-          if (!message) return;
-
-          const { element } = message;
-
-          virtualEl = element;
-          placement = 'top';
-        } else if (flags.check(Flag.Block, value)) {
-          const [ok, { selectedBlocks }] = context.chain
-            .pipe(getBlockSelectionsCommand)
-            .pipe(getSelectedBlocksCommand, { types: ['block'] })
-            .run();
-
-          if (!ok || !selectedBlocks?.length) return;
-
-          virtualEl = {
-            getBoundingClientRect: () => {
-              const rects = selectedBlocks.map(e => e.getBoundingClientRect());
-              const bounds = getCommonBound(rects.map(Bound.fromDOMRect));
-              if (!bounds) return rects[0];
-              return new DOMRect(bounds.x, bounds.y, bounds.w, bounds.h);
-            },
-            getClientRects: () =>
-              selectedBlocks.map(e => e.getBoundingClientRect()),
-          };
-        } else {
-          const range = range$.value;
-          if (!range) return;
-
-          virtualEl = {
-            getBoundingClientRect: () => range.getBoundingClientRect(),
-            getClientRects: () =>
-              Array.from(range.getClientRects()).filter(rect =>
-                Math.round(rect.width)
-              ),
-          };
-        }
-
-        if (!virtualEl) return;
-
-        return autoUpdatePosition(virtualEl, toolbar, placement);
-      })
-    );
-
     // Formatting
     // Selects text in note.
     disposables.add(
       std.selection.find$(TextSelection).subscribe(result => {
         const activated = Boolean(
-          result &&
+          context.activated &&
+            result &&
             !result.isCollapsed() &&
             result.from.length + (result.to?.length ?? 0)
         );
@@ -179,15 +118,12 @@ export class AffineToolbarWidget extends WidgetComponent {
     );
 
     // Formatting
-    // Selects `native` text in database's cell.
+    // Selects `native` text in database's cell or in table.
     disposables.addFromEvent(document, 'selectionchange', () => {
-      if (!host.event.active) return;
+      const range = std.range.value ?? null;
+      let activated = context.activated && Boolean(range && !range.collapsed);
 
-      let activated = false;
-      let range = std.range.value ?? null;
-      const valid = Boolean(range && !range.collapsed);
-
-      if (valid) {
+      if (activated) {
         const result = std.selection.find(DatabaseSelection);
         const viewSelection = result?.viewSelection;
 
@@ -198,6 +134,12 @@ export class AffineToolbarWidget extends WidgetComponent {
               (viewSelection.selectionType === 'cell' &&
                 viewSelection.isEditing))
         );
+
+        if (!activated) {
+          const result = std.selection.find(TableSelection);
+          const viewSelection = result?.data;
+          activated = Boolean(viewSelection && viewSelection.type === 'area');
+        }
       }
 
       batch(() => {
@@ -205,7 +147,7 @@ export class AffineToolbarWidget extends WidgetComponent {
 
         if (!activated) return;
 
-        range$.value = valid ? range : null;
+        range$.value = activated ? range : null;
         flavour$.value = 'affine:note';
 
         flags.refresh(Flag.Native);
@@ -217,7 +159,7 @@ export class AffineToolbarWidget extends WidgetComponent {
       std.selection.filter$(BlockSelection).subscribe(result => {
         const count = result.length;
         let flavour = 'affine:note';
-        let activated = Boolean(count);
+        let activated = context.activated && Boolean(count);
 
         if (activated) {
           // Handles a signal block.
@@ -259,16 +201,20 @@ export class AffineToolbarWidget extends WidgetComponent {
     disposables.add(
       std.selection.filter$(SurfaceSelection).subscribe(result => {
         const activated =
-          Boolean(result.length) && !result.some(e => e.editing);
+          context.activated &&
+          Boolean(result.length) &&
+          !result.some(e => e.editing);
         flags.toggle(Flag.Surface, activated);
       })
     );
 
     disposables.add(
       std.selection.slots.changed.on(results => {
+        if (!context.activated) return;
+
         const value = flags.value$.peek();
         if (flags.contains(Flag.Hovering | Flag.Hiding, value)) return;
-        if (!flags.check(Flag.Text)) return;
+        if (!flags.check(Flag.Text, value)) return;
 
         const hasTextSelection =
           results.filter(s => s.is(TextSelection)).length > 0;
@@ -331,7 +277,10 @@ export class AffineToolbarWidget extends WidgetComponent {
     // Handles hover elements
     disposables.add(
       toolbarRegistry.message$.subscribe(data => {
-        if (flags.contains(Flag.Text | Flag.Native | Flag.Block)) {
+        if (
+          !context.activated ||
+          flags.contains(Flag.Text | Flag.Native | Flag.Block)
+        ) {
           flags.toggle(Flag.Hovering, false);
           return;
         }
@@ -357,6 +306,8 @@ export class AffineToolbarWidget extends WidgetComponent {
     // Should update position of notes' toolbar in edgeless
     disposables.add(
       this.std.get(GfxControllerIdentifier).viewport.viewportUpdated.on(() => {
+        if (!context.activated) return;
+
         if (flags.value === Flag.None || flags.check(Flag.Hiding)) {
           return;
         }
@@ -387,23 +338,86 @@ export class AffineToolbarWidget extends WidgetComponent {
         }
 
         // Shows toolbar
-        // 1. `Flag.Hovering`: inline links in note/database
-        // 2. `Flag.Text`: formatting in note
-        // 3. `Flag.Native`: formating in database
-        // 4. `Flag.Block`: blocks in note
+        // 1. `Flag.Text`: formatting in note
+        // 2. `Flag.Native`: formating in database
+        // 3. `Flag.Block`: blocks in note
+        // 4. `Flag.Hovering`: inline links in note/database
         if (
           flags.contains(
             Flag.Hovering | Flag.Text | Flag.Native | Flag.Block,
             value
           )
         ) {
+          renderToolbar(toolbar, context, flavour$.peek());
           toolbar.dataset.open = 'true';
-          renderToolbar(context, toolbar, flavour$.peek());
           return;
         }
 
         // Shows toolbar in edgeles
         // TODO(@fundon): handles edgeless toolbar
+      })
+    );
+
+    disposables.add(
+      effect(() => {
+        const value = flags.value$.value;
+        const flavour = flavour$.value;
+        if (!context.activated || flags.contains(Flag.Hiding, value)) return;
+        if (
+          !flags.contains(
+            Flag.Hovering | Flag.Text | Flag.Native | Flag.Block,
+            value
+          )
+        )
+          return;
+
+        // TODO(@fundon): improves here
+        const isNote = flavour === 'affine:note';
+        let placement = isNote ? ('top' as Placement) : undefined;
+        let virtualEl: ReferenceElement | null = null;
+
+        if (flags.check(Flag.Hovering, value)) {
+          const message = message$.value;
+          if (!message) return;
+
+          const { element } = message;
+
+          virtualEl = element;
+          placement = 'top';
+        } else if (flags.check(Flag.Block, value)) {
+          const [ok, { selectedBlocks }] = context.chain
+            .pipe(getBlockSelectionsCommand)
+            .pipe(getSelectedBlocksCommand, { types: ['block'] })
+            .run();
+
+          if (!ok || !selectedBlocks?.length) return;
+
+          virtualEl = {
+            getBoundingClientRect: () => {
+              const rects = selectedBlocks.map(e => e.getBoundingClientRect());
+              const bounds = getCommonBound(rects.map(Bound.fromDOMRect));
+              if (!bounds) return rects[0];
+              return new DOMRect(bounds.x, bounds.y, bounds.w, bounds.h);
+            },
+            getClientRects: () =>
+              selectedBlocks.map(e => e.getBoundingClientRect()),
+          };
+        } else {
+          const range = range$.value;
+          if (!range) return;
+
+          virtualEl = {
+            getBoundingClientRect: () => range.getBoundingClientRect(),
+            getClientRects: () =>
+              Array.from(range.getClientRects()).filter(rect =>
+                Math.round(rect.width)
+              ),
+          };
+        }
+
+        if (!virtualEl) return;
+
+        return autoUpdatePosition(virtualEl, toolbar, placement);
       })
     );
   }

@@ -27,8 +27,8 @@ export const builtinToolbarConfig = {
       id: 'a.open-doc',
       icon: ExpandFullIcon(),
       tooltip: 'Open this doc',
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           EmbedHtmlBlockComponent
         );
@@ -47,26 +47,26 @@ export const builtinToolbarConfig = {
           label: 'Small horizontal style',
         },
       ],
-      content(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection, EmbedHtmlModel);
+      content(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection, EmbedHtmlModel);
         if (!model) return null;
 
-        const actions = this.actions.map(action => ({
+        const actions = this.actions.map<ToolbarAction>(action => ({
           ...action,
           run: ({ store }) => {
             store.updateBlock(model, { style: action.id });
 
             // TODO(@fundon): add tracking event
           },
-        })) satisfies ToolbarAction[];
+        }));
 
         return html`${keyed(
           model,
-          html`<affine-card-style-dropdown
+          html`<affine-card-style-dropdown-menu
             .actions=${actions}
-            .context=${cx}
+            .context=${ctx}
             .style$=${model.style$}
-          ></affine-card-style-dropdown>`
+          ></affine-card-style-dropdown-menu>`
         )}`;
       },
     } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -74,8 +74,8 @@ export const builtinToolbarConfig = {
       id: 'c.caption',
       tooltip: 'Caption',
       icon: CaptionIcon(),
-      run(cx) {
-        const component = cx.getCurrentBlockComponentBy(
+      run(ctx) {
+        const component = ctx.getCurrentBlockComponentBy(
           BlockSelection,
           EmbedHtmlBlockComponent
         );
@@ -90,14 +90,14 @@ export const builtinToolbarConfig = {
           id: 'copy',
           label: 'Copy',
           icon: CopyIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
-            const slice = Slice.fromModels(cx.store, [model]);
-            cx.clipboard
+            const slice = Slice.fromModels(ctx.store, [model]);
+            ctx.clipboard
               .copySlice(slice)
-              .then(() => toast(cx.host, 'Copied to clipboard'))
+              .then(() => toast(ctx.host, 'Copied to clipboard'))
               .catch(console.error);
           },
         },
@@ -105,15 +105,15 @@ export const builtinToolbarConfig = {
           id: 'duplicate',
           label: 'Duplicate',
           icon: DuplicateIcon(),
-          run(cx) {
-            const model = cx.getCurrentModelBy(BlockSelection);
+          run(ctx) {
+            const model = ctx.getCurrentModelBy(BlockSelection);
             if (!model) return;
 
             const { flavour, parent } = model;
             const props = getBlockProps(model);
             const index = parent?.children.indexOf(model);
 
-            cx.store.addBlock(flavour, props, parent, index);
+            ctx.store.addBlock(flavour, props, parent, index);
           },
         },
       ],
@@ -124,11 +124,11 @@ export const builtinToolbarConfig = {
       label: 'Delete',
       icon: DeleteIcon(),
       variant: 'destructive',
-      run(cx) {
-        const model = cx.getCurrentModelBy(BlockSelection);
+      run(ctx) {
+        const model = ctx.getCurrentModelBy(BlockSelection);
         if (!model) return;
 
-        cx.store.deleteBlock(model);
+        ctx.store.deleteBlock(model);
       },
     },
   ],

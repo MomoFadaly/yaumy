@@ -28,16 +28,6 @@ export const linkedDocWidget = WidgetViewExtension(
   AFFINE_LINKED_DOC_WIDGET,
   literal`${unsafeStatic(AFFINE_LINKED_DOC_WIDGET)}`
 );
-export const dragHandleWidget = WidgetViewExtension(
-  'affine:page',
-  AFFINE_DRAG_HANDLE_WIDGET,
-  literal`${unsafeStatic(AFFINE_DRAG_HANDLE_WIDGET)}`
-);
-export const docRemoteSelectionWidget = WidgetViewExtension(
-  'affine:page',
-  AFFINE_DOC_REMOTE_SELECTION_WIDGET,
-  literal`${unsafeStatic(AFFINE_DOC_REMOTE_SELECTION_WIDGET)}`
-);
 export const viewportOverlayWidget = WidgetViewExtension(
   'affine:page',
   AFFINE_VIEWPORT_OVERLAY_WIDGET,

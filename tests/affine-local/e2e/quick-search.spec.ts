@@ -441,6 +441,7 @@ test('disable quick search when the link-popup is visitable', async ({
   const quickSearch = page.locator('[data-testid=cmdk-quick-search]');
   await expect(quickSearch).toBeVisible();
   await withCtrlOrMeta(page, () => page.keyboard.press('k'));
+  await expect(quickSearch).toBeHidden();
 
   await getBlockSuiteEditorTitle(page).click();
   await getBlockSuiteEditorTitle(page).fill(specialTitle);
@@ -544,7 +545,11 @@ test('can use slash menu to insert a newly created doc card', async ({
 
   const testTitle = 'test title';
   await page.locator('[cmdk-input]').fill(testTitle);
-  await page.keyboard.press('Enter');
+
+  const addNewPage = page.locator(
+    `[cmdk-item] >> text=New "${testTitle}" Page`
+  );
+  await addNewPage.click();
 
   await expect(page.locator('affine-embed-linked-doc-block')).toBeVisible();
   await expect(

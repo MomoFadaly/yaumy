@@ -23,17 +23,12 @@ test('can open peek view via link popover', async ({ page }) => {
 
   await page.locator('affine-reference').hover();
 
-  await expect(
-    page.locator('.affine-reference-popover-container')
-  ).toBeVisible();
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
+  await expect(toolbar).toBeVisible();
 
   // click more button
-  await page
-    .locator('editor-menu-button editor-icon-button[aria-label="Open doc"]')
-    .click();
-  await page
-    .locator('editor-menu-action:has-text("Open in center peek")')
-    .click();
+  await toolbar.getByLabel('Open doc').click();
+  await toolbar.getByLabel('Open in center peek').click();
 
   // verify peek view is opened
   await expect(page.getByTestId('peek-view-modal')).toBeVisible();
@@ -64,16 +59,12 @@ test('can open peek view via db+click link card', async ({ page }) => {
   await createLinkedPage(page, 'Test Page');
 
   await page.locator('affine-reference').hover();
-  await expect(
-    page.locator('.affine-reference-popover-container')
-  ).toBeVisible();
 
-  await page
-    .locator('editor-menu-button editor-icon-button[aria-label="Switch view"]')
-    .click();
-  await page
-    .locator('editor-menu-button editor-menu-action[aria-label="Card view"]')
-    .click();
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
+  await expect(toolbar).toBeVisible();
+
+  await toolbar.getByLabel('Switch view').click();
+  await toolbar.getByLabel('Card view').click();
 
   await expect(
     page.locator('affine-embed-linked-doc-block:has-text("Test Page")')

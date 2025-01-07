@@ -12,28 +12,26 @@ export function getFormatBar(page: Page) {
   const codeBtn = formatBar.getByTestId('code');
   const linkBtn = formatBar.getByTestId('link');
   // highlight
-  const highlightBtn = formatBar.locator('.highlight-icon');
-  const redForegroundBtn = formatBar.getByTestId(
-    'var(--affine-text-highlight-foreground-red)'
-  );
+  const highlightBtn = formatBar.getByRole('button', { name: 'highlight' });
+  const redForegroundBtn = formatBar.getByTestId('foreground-red');
   const createLinkedDocBtn = formatBar.getByTestId('convert-to-linked-doc');
-  const defaultColorBtn = formatBar.getByTestId('unset');
+  const defaultColorBtn = formatBar.getByTestId('foreground-default');
   const highlight = {
     highlightBtn,
     redForegroundBtn,
     defaultColorBtn,
   };
 
-  const paragraphBtn = formatBar.locator(`.paragraph-button`);
+  const paragraphBtn = formatBar.getByRole('button', { name: 'Conversions' });
   const openParagraphMenu = async () => {
     await expect(formatBar).toBeVisible();
-    await paragraphBtn.hover();
+    await paragraphBtn.click();
   };
 
-  const textBtn = formatBar.getByTestId('affine:paragraph/text');
-  const h1Btn = formatBar.getByTestId('affine:paragraph/h1');
-  const bulletedBtn = formatBar.getByTestId('affine:list/bulleted');
-  const codeBlockBtn = formatBar.getByTestId('affine:code/');
+  const textBtn = formatBar.getByRole('button', { name: 'Text' });
+  const h1Btn = formatBar.getByRole('button', { name: 'Heading 1' });
+  const bulletedBtn = formatBar.getByRole('button', { name: 'Bulleted List' });
+  const codeBlockBtn = formatBar.getByRole('button', { name: 'Code Block' });
 
   const moreBtn = formatBar.getByRole('button', { name: 'More' });
   const copyBtn = formatBar.getByRole('button', { name: 'Copy' });
@@ -81,11 +79,11 @@ export function getFormatBar(page: Page) {
 }
 
 export function getEmbedCardToolbar(page: Page) {
-  const embedCardToolbar = page.locator('.embed-card-toolbar');
+  const embedCardToolbar = page.locator('affine-toolbar-widget editor-toolbar');
   function createButtonLocator(name: string) {
     return embedCardToolbar.getByRole('button', { name });
   }
-  const copyButton = createButtonLocator('copy');
+  const copyButton = createButtonLocator('copy-link');
   const editButton = createButtonLocator('edit');
   const cardStyleButton = createButtonLocator('card style');
   const captionButton = createButtonLocator('caption');

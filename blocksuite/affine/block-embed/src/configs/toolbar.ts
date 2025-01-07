@@ -43,12 +43,12 @@ export function createBuiltinToolbarConfigForExternal(
     actions: [
       {
         id: 'a.preview',
-        content(cx) {
-          const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+        content(ctx) {
+          const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
           if (!model || !isExternalEmbedModel(model)) return null;
 
           const { url } = model;
-          const options = cx.std
+          const options = ctx.std
             .get(EmbedOptionProvider)
             .getEmbedBlockOptions(url);
 
@@ -63,8 +63,8 @@ export function createBuiltinToolbarConfigForExternal(
           {
             id: 'inline',
             label: 'Inline view',
-            run(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            run(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return;
 
               const { title, caption, url: link, parent } = model;
@@ -77,9 +77,9 @@ export function createBuiltinToolbarConfigForExternal(
 
               const text = new Text(yText);
 
-              cx.store.addBlock('affine:paragraph', { text }, parent, index);
+              ctx.store.addBlock('affine:paragraph', { text }, parent, index);
 
-              cx.store.deleteBlock(model);
+              ctx.store.deleteBlock(model);
 
               // inline
               // track(this.std, model, this._viewType, 'SelectedView', {
@@ -91,24 +91,24 @@ export function createBuiltinToolbarConfigForExternal(
           {
             id: 'card',
             label: 'Card view',
-            disabled(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            disabled(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return true;
 
               const { url } = model;
-              const options = cx.std
+              const options = ctx.std
                 .get(EmbedOptionProvider)
                 .getEmbedBlockOptions(url);
 
               return options?.viewType === 'card';
             },
-            run(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            run(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return;
 
               const { url, caption, parent } = model;
               const index = parent?.children.indexOf(model);
-              const options = cx.std
+              const options = ctx.std
                 .get(EmbedOptionProvider)
                 .getEmbedBlockOptions(url);
 
@@ -126,14 +126,14 @@ export function createBuiltinToolbarConfigForExternal(
                   BookmarkStyles[1];
               }
 
-              cx.store.addBlock(
+              ctx.store.addBlock(
                 flavour,
                 { url, caption, style },
                 parent,
                 index
               );
 
-              cx.store.deleteBlock(model);
+              ctx.store.deleteBlock(model);
 
               // card
               // track(this.std, model, this._viewType, 'SelectedView', {
@@ -145,35 +145,35 @@ export function createBuiltinToolbarConfigForExternal(
           {
             id: 'embed',
             label: 'Embed view',
-            disabled(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            disabled(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return false;
 
               const { url } = model;
-              const options = cx.std
+              const options = ctx.std
                 .get(EmbedOptionProvider)
                 .getEmbedBlockOptions(url);
 
               return options?.viewType === 'embed';
             },
-            when(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            when(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return false;
 
               const { url } = model;
-              const options = cx.std
+              const options = ctx.std
                 .get(EmbedOptionProvider)
                 .getEmbedBlockOptions(url);
 
               return options?.viewType === 'embed';
             },
-            run(cx) {
-              const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+            run(ctx) {
+              const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
               if (!model || !isExternalEmbedModel(model)) return;
 
               const { url, caption, parent } = model;
               const index = parent?.children.indexOf(model);
-              const options = cx.std
+              const options = ctx.std
                 .get(EmbedOptionProvider)
                 .getEmbedBlockOptions(url);
 
@@ -188,14 +188,14 @@ export function createBuiltinToolbarConfigForExternal(
                   styles[0];
               }
 
-              cx.store.addBlock(
+              ctx.store.addBlock(
                 flavour,
                 { url, caption, style },
                 parent,
                 index
               );
 
-              cx.store.deleteBlock(model);
+              ctx.store.deleteBlock(model);
 
               // embed
               // track(this.std, model, this._viewType, 'SelectedView', {
@@ -205,13 +205,13 @@ export function createBuiltinToolbarConfigForExternal(
             },
           },
         ],
-        content(cx) {
-          const model = cx.getCurrentBlockBy(BlockSelection)?.model;
+        content(ctx) {
+          const model = ctx.getCurrentBlockBy(BlockSelection)?.model;
           if (!model || !isExternalEmbedModel(model)) return null;
 
           const { url } = model;
           const viewType =
-            cx.std.get(EmbedOptionProvider).getEmbedBlockOptions(url)
+            ctx.std.get(EmbedOptionProvider).getEmbedBlockOptions(url)
               ?.viewType ?? 'card';
           const actions = this.actions.map(action => ({ ...action }));
           const viewType$ = signal(
@@ -229,12 +229,12 @@ export function createBuiltinToolbarConfigForExternal(
 
           return html`${keyed(
             model,
-            html`<affine-view-dropdown
+            html`<affine-view-dropdown-menu
               .actions=${actions}
-              .context=${cx}
+              .context=${ctx}
               .toggle=${toggle}
               .viewType$=${viewType$}
-            ></affine-view-dropdown>`
+            ></affine-view-dropdown-menu>`
           )}`;
         },
       } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -250,8 +250,8 @@ export function createBuiltinToolbarConfigForExternal(
             label: 'Small horizontal style',
           },
         ],
-        content(cx) {
-          const model = cx.getCurrentModelBy(BlockSelection, EmbedGithubModel);
+        content(ctx) {
+          const model = ctx.getCurrentModelBy(BlockSelection, EmbedGithubModel);
           if (!model) return null;
 
           const actions = this.actions.map(action => ({
@@ -274,12 +274,12 @@ export function createBuiltinToolbarConfigForExternal(
 
           return html`${keyed(
             model,
-            html`<affine-card-style-dropdown
+            html`<affine-card-style-dropdown-menu
               .actions=${actions}
-              .context=${cx}
+              .context=${ctx}
               .toggle=${toggle}
               .style$=${model.style$}
-            ></affine-card-style-dropdown>`
+            ></affine-card-style-dropdown-menu>`
           )}`;
         },
       } satisfies ToolbarActionGroup<ToolbarAction>,
@@ -287,8 +287,8 @@ export function createBuiltinToolbarConfigForExternal(
         id: 'd.caption',
         tooltip: 'Caption',
         icon: CaptionIcon(),
-        run(cx) {
-          const component = cx.getCurrentBlockComponentBy(
+        run(ctx) {
+          const component = ctx.getCurrentBlockComponentBy(
             BlockSelection,
             klass
           );
@@ -309,14 +309,14 @@ export function createBuiltinToolbarConfigForExternal(
             id: 'copy',
             label: 'Copy',
             icon: CopyIcon(),
-            run(cx) {
-              const model = cx.getCurrentModelBy(BlockSelection);
+            run(ctx) {
+              const model = ctx.getCurrentModelBy(BlockSelection);
               if (!model || !isExternalEmbedModel(model)) return;
 
-              const slice = Slice.fromModels(cx.store, [model]);
-              cx.clipboard
+              const slice = Slice.fromModels(ctx.store, [model]);
+              ctx.clipboard
                 .copySlice(slice)
-                .then(() => toast(cx.host, 'Copied to clipboard'))
+                .then(() => toast(ctx.host, 'Copied to clipboard'))
                 .catch(console.error);
             },
           },
@@ -324,15 +324,15 @@ export function createBuiltinToolbarConfigForExternal(
             id: 'duplicate',
             label: 'Duplicate',
             icon: DuplicateIcon(),
-            run(cx) {
-              const model = cx.getCurrentModelBy(BlockSelection);
+            run(ctx) {
+              const model = ctx.getCurrentModelBy(BlockSelection);
               if (!model || !isExternalEmbedModel(model)) return;
 
               const { flavour, parent } = model;
               const props = getBlockProps(model);
               const index = parent?.children.indexOf(model);
 
-              cx.store.addBlock(flavour, props, parent, index);
+              ctx.store.addBlock(flavour, props, parent, index);
             },
           },
         ],
@@ -342,8 +342,8 @@ export function createBuiltinToolbarConfigForExternal(
         id: 'b.reload',
         label: 'Reload',
         icon: ResetIcon(),
-        run(cx) {
-          const component = cx.getCurrentBlockComponentBy(
+        run(ctx) {
+          const component = ctx.getCurrentBlockComponentBy(
             BlockSelection,
             klass
           );
@@ -358,11 +358,11 @@ export function createBuiltinToolbarConfigForExternal(
         label: 'Delete',
         icon: DeleteIcon(),
         variant: 'destructive',
-        run(cx) {
-          const model = cx.getCurrentModelBy(BlockSelection);
+        run(ctx) {
+          const model = ctx.getCurrentModelBy(BlockSelection);
           if (!model || !isExternalEmbedModel(model)) return;
 
-          cx.store.deleteBlock(model);
+          ctx.store.deleteBlock(model);
         },
       },
     ],

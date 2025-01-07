@@ -1,14 +1,17 @@
-import { LifeCycleWatcher } from '@blocksuite/affine/block-std';
 import {
-  AffineFormatBarWidget,
+  BlockFlavourIdentifier,
+  LifeCycleWatcher,
+} from '@blocksuite/affine/block-std';
+import {
   AffineSlashMenuWidget,
   PageRootBlockSpec,
+  ToolbarModuleExtension,
 } from '@blocksuite/affine/blocks';
 import type { ExtensionType } from '@blocksuite/affine/store';
 import type { FrameworkProvider } from '@toeverything/infra';
 
 import { buildAIPanelConfig } from '../ai-panel';
-import { setupFormatBarAIEntry } from '../entries/format-bar/setup-format-bar';
+import { toolbarAIEntryConfig } from '../entries';
 import { setupSlashMenuAIEntry } from '../entries/slash-menu/setup-slash-menu';
 import { setupSpaceAIEntry } from '../entries/space/setup-space';
 import {
@@ -34,10 +37,6 @@ function getAIPageRootWatcher(framework: FrameworkProvider) {
           setupSpaceAIEntry(component);
         }
 
-        if (component instanceof AffineFormatBarWidget) {
-          setupFormatBarAIEntry(component);
-        }
-
         if (component instanceof AffineSlashMenuWidget) {
           setupSlashMenuAIEntry(component);
         }
@@ -50,5 +49,13 @@ function getAIPageRootWatcher(framework: FrameworkProvider) {
 export function createAIPageRootBlockSpec(
   framework: FrameworkProvider
 ): ExtensionType[] {
-  return [...PageRootBlockSpec, aiPanelWidget, getAIPageRootWatcher(framework)];
+  return [
+    ...PageRootBlockSpec,
+    aiPanelWidget,
+    getAIPageRootWatcher(framework),
+    ToolbarModuleExtension({
+      id: BlockFlavourIdentifier('custom:affine:note'),
+      config: toolbarAIEntryConfig(),
+    }),
+  ];
 }

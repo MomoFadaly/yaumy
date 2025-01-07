@@ -54,18 +54,18 @@ test('basic link', async ({ page }, testInfo) => {
   // clear text selection
   await page.keyboard.press('ArrowLeft');
 
-  const viewLinkPopoverLocator = page.locator('.affine-link-popover.view');
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
   // Hover link
-  await expect(viewLinkPopoverLocator).not.toBeVisible();
+  await expect(toolbar).not.toBeVisible();
   await linkLocator.hover();
   // wait for popover delay open
   await page.waitForTimeout(200);
-  await expect(viewLinkPopoverLocator).toBeVisible();
+  await expect(toolbar).toBeVisible();
 
   // Edit link
   const text2 = 'link2';
   const link2 = 'https://github.com';
-  const editLinkBtn = viewLinkPopoverLocator.getByTestId('edit');
+  const editLinkBtn = toolbar.getByTestId('edit');
   await editLinkBtn.click();
 
   const editLinkPopoverLocator = page.locator('.affine-link-edit-popover');
@@ -166,7 +166,7 @@ test('type character after link should not extend the link attributes', async ({
   );
 });
 
-test('readonly mode should not trigger link popup', async ({ page }) => {
+test('readonly mode should not trigger toolbar', async ({ page }) => {
   await enterPlaygroundRoom(page);
   const linkText = 'linkText';
   await createLinkBlock(page, 'linkText', 'http://example.com');
@@ -174,9 +174,10 @@ test('readonly mode should not trigger link popup', async ({ page }) => {
   const linkLocator = page.locator(`text="${linkText}"`);
 
   // Hover link
-  const linkPopoverLocator = page.locator('.affine-link-popover');
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
   await linkLocator.hover();
-  await expect(linkPopoverLocator).toBeVisible();
+  await expect(toolbar).toBeVisible();
+
   await switchReadonly(page);
 
   await page.mouse.move(0, 0);
@@ -184,7 +185,7 @@ test('readonly mode should not trigger link popup', async ({ page }) => {
   await page.waitForTimeout(300);
 
   await linkLocator.hover();
-  await expect(linkPopoverLocator).not.toBeVisible();
+  await expect(toolbar).not.toBeVisible();
 
   // ---
   // press hotkey should not trigger create link popup
@@ -192,7 +193,7 @@ test('readonly mode should not trigger link popup', async ({ page }) => {
   await dragBetweenIndices(page, [0, 0], [0, 3]);
   await pressCreateLinkShortCut(page);
 
-  await expect(linkPopoverLocator).not.toBeVisible();
+  await expect(toolbar).not.toBeVisible();
   const linkPopoverInput = page.locator('.affine-link-popover-input');
   await expect(linkPopoverInput).not.toBeVisible();
 });
@@ -237,17 +238,16 @@ test('should keyboard work in link popover', async ({ page }) => {
   await assertKeyboardWorkInInput(page, linkPopoverInput);
   await page.mouse.click(500, 500);
 
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
   const linkLocator = page.locator(`text="${linkText}"`);
-  const linkPopover = page.locator('.affine-link-popover');
-  await linkLocator.hover();
-  await waitNextFrame(page, 200);
-  await expect(linkLocator).toBeVisible();
-  // Hover link
+
+  // hover link
   await linkLocator.hover();
   // wait for popover delay open
-  await page.waitForTimeout(200);
-  await expect(linkPopover).toBeVisible();
-  const editLinkBtn = linkPopover.getByTestId('edit');
+  await page.waitForTimeout(500);
+  await expect(toolbar).toBeVisible();
+
+  const editLinkBtn = toolbar.getByTestId('edit');
   await editLinkBtn.click();
 
   const editLinkPopover = page.locator('.affine-link-edit-popover');
@@ -347,13 +347,12 @@ test('convert link to card', async ({ page }, testInfo) => {
   await setSelection(page, 3, 1, 3, 9);
   await pressCreateLinkShortCut(page);
   await waitNextFrame(page);
-  const linkPopoverLocator = page.locator('.affine-link-popover');
-  await expect(linkPopoverLocator).toBeVisible();
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
+  await expect(toolbar).toBeVisible();
   const linkPopoverInput = page.locator('.affine-link-popover-input');
   await expect(linkPopoverInput).toBeVisible();
   await type(page, link);
   await pressEnter(page);
-  await expect(linkPopoverLocator).not.toBeVisible();
   await focusRichText(page, 1);
 
   expect(await getPageSnapshot(page, true)).toMatchSnapshot(
@@ -364,24 +363,24 @@ test('convert link to card', async ({ page }, testInfo) => {
 
   await linkLocator.hover();
   await waitNextFrame(page);
-  await expect(linkPopoverLocator).toBeVisible();
+  await expect(toolbar).toBeVisible();
 
-  await page.getByRole('button', { name: 'Switch view' }).click();
-  const linkToCardBtn = page.getByTestId('link-to-card');
-  const linkToEmbedBtn = page.getByTestId('link-to-embed');
+  await toolbar.getByRole('button', { name: 'Switch view' }).click();
+  const linkToCardBtn = toolbar.getByTestId('link-to-card');
+  const linkToEmbedBtn = toolbar.getByTestId('link-to-embed');
   await expect(linkToCardBtn).toBeVisible();
   await expect(linkToEmbedBtn).not.toBeVisible();
 
   await page.mouse.move(0, 0);
   await waitNextFrame(page);
-  await expect(linkPopoverLocator).not.toBeVisible();
+  await expect(toolbar).not.toBeVisible();
   await focusRichText(page, 1);
   await pressTab(page);
 
   await linkLocator.hover();
   await waitNextFrame(page);
-  await expect(linkPopoverLocator).toBeVisible();
-  await page.getByRole('button', { name: 'Switch view' }).click();
+  await expect(toolbar).toBeVisible();
+  await toolbar.getByRole('button', { name: 'Switch view' }).click();
   await expect(linkToCardBtn).toBeVisible();
   await expect(linkToEmbedBtn).not.toBeVisible();
 });
@@ -400,13 +399,12 @@ test('convert link to embed', async ({ page }, testInfo) => {
   await setSelection(page, 3, 1, 3, 9);
   await pressCreateLinkShortCut(page);
   await waitNextFrame(page);
-  const linkPopoverLocator = page.locator('.affine-link-popover');
-  await expect(linkPopoverLocator).toBeVisible();
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
+  await expect(toolbar).toBeVisible();
   const linkPopoverInput = page.locator('.affine-link-popover-input');
   await expect(linkPopoverInput).toBeVisible();
   await type(page, link);
   await pressEnter(page);
-  await expect(linkPopoverLocator).not.toBeVisible();
   await focusRichText(page);
 
   expect(await getPageSnapshot(page, true)).toMatchSnapshot(
@@ -417,5 +415,5 @@ test('convert link to embed', async ({ page }, testInfo) => {
 
   await linkLocator.hover();
   await waitNextFrame(page);
-  await expect(linkPopoverLocator).toBeVisible();
+  await expect(toolbar).toBeVisible();
 });

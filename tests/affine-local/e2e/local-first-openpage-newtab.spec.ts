@@ -123,12 +123,10 @@ test('ctrl click embedded doc link and open in new tab', async ({ page }) => {
   // hover on the reference node and change it to embedded card mode
   await referenceNode.hover();
 
-  const referencePopup = page.locator(
-    'reference-popup .affine-reference-popover-container'
-  );
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
 
-  await expect(referencePopup).toBeVisible();
-  await referencePopup.getByRole('button', { name: 'Switch view' }).click();
+  await expect(toolbar).toBeVisible();
+  await toolbar.getByRole('button', { name: 'Switch view' }).click();
   await page.getByRole('button', { name: 'Card view' }).click();
 
   const embededDocBlock = page.locator('affine-embed-linked-doc-block');

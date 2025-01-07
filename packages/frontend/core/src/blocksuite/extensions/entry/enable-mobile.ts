@@ -12,15 +12,14 @@ import type {
 } from '@blocksuite/affine/blocks';
 import {
   codeToolbarWidget,
-  embedCardToolbarWidget,
   FeatureFlagService,
-  formatBarWidget,
   imageToolbarWidget,
   ParagraphBlockService,
   ReferenceNodeConfigIdentifier,
   RootBlockConfigExtension,
   slashMenuWidget,
   surfaceRefToolbarWidget,
+  toolbarWidget,
 } from '@blocksuite/affine/blocks';
 import type { Container } from '@blocksuite/affine/global/di';
 import type { ExtensionType } from '@blocksuite/affine/store';
@@ -103,11 +102,10 @@ const mobileExtensions: ExtensionType[] = [
 ];
 
 export function enableMobileExtension(specBuilder: SpecBuilder): void {
-  specBuilder.omit(formatBarWidget);
-  specBuilder.omit(embedCardToolbarWidget);
   specBuilder.omit(slashMenuWidget);
   specBuilder.omit(codeToolbarWidget);
   specBuilder.omit(imageToolbarWidget);
   specBuilder.omit(surfaceRefToolbarWidget);
+  specBuilder.omit(toolbarWidget);
   specBuilder.extend(mobileExtensions);
 }
