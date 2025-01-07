@@ -4033,6 +4033,20 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@blocksuite/affine-widget-toolbar@workspace:*, @blocksuite/affine-widget-toolbar@workspace:blocksuite/affine/widget-toolbar":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/affine-widget-toolbar@workspace:blocksuite/affine/widget-toolbar"
+  dependencies:
+    "@blocksuite/affine-model": "workspace:*"
+    "@blocksuite/affine-shared": "workspace:*"
+    "@blocksuite/block-std": "workspace:*"
+    "@blocksuite/global": "workspace:*"
+    "@preact/signals-core": "npm:^1.8.0"
+    "@toeverything/theme": "npm:^1.1.12"
+    lit: "npm:^3.2.0"
+  languageName: unknown
+  linkType: soft
+
 "@blocksuite/affine@workspace:*, @blocksuite/affine@workspace:blocksuite/affine/all":
   version: 0.0.0-use.local
   resolution: "@blocksuite/affine@workspace:blocksuite/affine/all"
@@ -4105,6 +4119,7 @@ __metadata:
     "@blocksuite/affine-widget-frame-title": "workspace:*"
     "@blocksuite/affine-widget-remote-selection": "workspace:*"
     "@blocksuite/affine-widget-scroll-anchoring": "workspace:*"
+    "@blocksuite/affine-widget-toolbar": "workspace:*"
     "@blocksuite/block-std": "workspace:*"
     "@blocksuite/data-view": "workspace:*"
     "@blocksuite/global": "workspace:*"
@@ -4225,7 +4240,7 @@ __metadata:
     "@blocksuite/integration-test": "workspace:*"
     "@blocksuite/store": "workspace:*"
     "@playwright/test": "npm:=1.50.1"
-    "@toeverything/theme": "npm:^1.1.7"
+    "@toeverything/theme": "npm:^1.1.12"
   languageName: unknown
   linkType: soft
 
@@ -14946,7 +14961,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@toeverything/theme@npm:^1.1.12, @toeverything/theme@npm:^1.1.7":
+"@toeverything/theme@npm:^1.1.12":
   version: 1.1.12
   resolution: "@toeverything/theme@npm:1.1.12"
   checksum: 10/32247cf7f7a819445fa7373a3afafaafc6a8527b95934e37e5f2c32181224b2184691b24bd8a400872cca7cd1336efe98bd5ad3366b98d149e48b3baee2609a7
