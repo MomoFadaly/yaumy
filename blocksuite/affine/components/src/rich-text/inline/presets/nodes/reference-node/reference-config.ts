@@ -3,7 +3,7 @@ import { createIdentifier } from '@blocksuite/global/di';
 import type { ExtensionType } from '@blocksuite/store';
 import type { TemplateResult } from 'lit';
 
-import type { AffineReference } from './reference-node.js';
+import type { AffineReference } from './reference-node';
 
 export interface ReferenceNodeConfig {
   customContent?: (reference: AffineReference) => TemplateResult;

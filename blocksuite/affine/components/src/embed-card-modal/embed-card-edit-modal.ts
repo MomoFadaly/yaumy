@@ -20,7 +20,11 @@ import type {
   BlockStdScope,
   EditorHost,
 } from '@blocksuite/block-std';
-import { SignalWatcher, WithDisposable } from '@blocksuite/global/utils';
+import {
+  nextTick,
+  SignalWatcher,
+  WithDisposable,
+} from '@blocksuite/global/utils';
 import { autoUpdate, computePosition, flip, offset } from '@floating-ui/dom';
 import { computed, signal } from '@preact/signals-core';
 import { css, html, LitElement } from 'lit';
@@ -137,6 +141,7 @@ export class EmbedCardEditModal extends SignalWatcher(
 
   private readonly _hide = () => {
     this.remove();
+    this.abortController?.abort();
   };
 
   private readonly _onKeydown = (e: KeyboardEvent) => {
@@ -146,7 +151,7 @@ export class EmbedCardEditModal extends SignalWatcher(
     }
     if (e.key === 'Escape') {
       e.preventDefault();
-      this.remove();
+      this._hide();
     }
   };
 
@@ -154,7 +159,7 @@ export class EmbedCardEditModal extends SignalWatcher(
     const blockComponent = this._blockComponent;
 
     if (!blockComponent) {
-      this.remove();
+      this._hide();
       return;
     }
 
@@ -168,14 +173,14 @@ export class EmbedCardEditModal extends SignalWatcher(
 
     track(std, this.model, this.viewType, 'ResetedAlias', { control: 'reset' });
 
-    this.remove();
+    this._hide();
   };
 
   private readonly _onSave = () => {
     const blockComponent = this._blockComponent;
 
     if (!blockComponent) {
-      this.remove();
+      this._hide();
       return;
     }
 
@@ -196,7 +201,7 @@ export class EmbedCardEditModal extends SignalWatcher(
 
     track(std, this.model, this.viewType, 'SavedAlias', { control: 'save' });
 
-    this.remove();
+    this._hide();
   };
 
   private readonly _updateDescription = (e: InputEvent) => {
@@ -278,7 +283,10 @@ export class EmbedCardEditModal extends SignalWatcher(
       })
     );
 
-    this.disposables.add(listenClickAway(this, this._hide));
+    // Resolves the click event is triggered after the first rendering.
+    nextTick()
+      .then(() => this.disposables.add(listenClickAway(this, this._hide)))
+      .catch(console.error);
     this.disposables.addFromEvent(this, 'keydown', this._onKeydown);
     this.disposables.addFromEvent(this, 'pointerdown', stopPropagation);
     this.disposables.addFromEvent(this, 'cut', stopPropagation);
@@ -401,6 +409,9 @@ export class EmbedCardEditModal extends SignalWatcher(
 
   @property({ attribute: false })
   accessor viewType!: string;
+
+  @property({ attribute: false })
+  accessor abortController: AbortController | undefined = undefined;
 }
 
 export function toggleEmbedCardEditModal(
@@ -413,7 +424,8 @@ export function toggleEmbedCardEditModal(
     std: BlockStdScope,
     component: BlockComponent,
     props: AliasInfo
-  ) => void
+  ) => void,
+  abortController?: AbortController
 ) {
   document.body.querySelector('embed-card-edit-modal')?.remove();
 
@@ -424,6 +436,7 @@ export function toggleEmbedCardEditModal(
   embedCardEditModal.originalDocInfo = originalDocInfo;
   embedCardEditModal.onReset = onReset;
   embedCardEditModal.onSave = onSave;
+  embedCardEditModal.abortController = abortController;
   document.body.append(embedCardEditModal);
 }
 

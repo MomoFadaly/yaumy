@@ -1,12 +1,15 @@
 import { FootNoteSchema, ReferenceInfoSchema } from '@blocksuite/affine-model';
+import { ToolbarModuleExtension } from '@blocksuite/affine-shared/services';
 import type { AffineTextAttributes } from '@blocksuite/affine-shared/types';
-import { StdIdentifier } from '@blocksuite/block-std';
+import { BlockFlavourIdentifier, StdIdentifier } from '@blocksuite/block-std';
 import type { InlineEditor, InlineRootElement } from '@blocksuite/inline';
 import { html } from 'lit';
 import { z } from 'zod';
 
 import { InlineSpecExtension } from '../../extension/index.js';
 import { FootNoteNodeConfigIdentifier } from './nodes/footnote-node/footnote-config.js';
+import { builtinInlineLinkToolbarConfig } from './nodes/link-node/configs/toolbar.js';
+import { builtinInlineReferenceToolbarConfig } from './nodes/reference-node/configs/toolbar.js';
 import {
   ReferenceNodeConfigIdentifier,
   ReferenceNodeConfigProvider,
@@ -220,4 +223,14 @@ export const InlineSpecExtensions = [
   LinkInlineSpecExtension,
   LatexEditorUnitSpecExtension,
   FootNoteInlineSpecExtension,
+
+  ToolbarModuleExtension({
+    id: BlockFlavourIdentifier('affine:reference'),
+    config: builtinInlineReferenceToolbarConfig,
+  }),
+
+  ToolbarModuleExtension({
+    id: BlockFlavourIdentifier('affine:link'),
+    config: builtinInlineLinkToolbarConfig,
+  }),
 ];

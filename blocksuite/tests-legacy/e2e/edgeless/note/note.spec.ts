@@ -229,7 +229,7 @@ test('format quick bar should show up when double-clicking on text', async ({
       delay: 20,
     });
   await page.waitForTimeout(200);
-  const formatBar = page.locator('.affine-format-bar-widget');
+  const formatBar = page.locator('affine-toolbar-widget editor-toolbar');
   await expect(formatBar).toBeVisible();
 });
 

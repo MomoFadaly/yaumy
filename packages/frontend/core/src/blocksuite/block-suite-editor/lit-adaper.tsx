@@ -21,6 +21,9 @@ import { PeekViewService } from '@affine/core/modules/peek-view/services/peek-vi
 import { WorkspaceService } from '@affine/core/modules/workspace';
 import track from '@affine/track';
 import type { DocMode, DocTitle } from '@blocksuite/affine/blocks';
+import {
+  toolbarWidget,
+} from '@blocksuite/affine/blocks';
 import type { Store } from '@blocksuite/affine/store';
 import {
   useFramework,

@@ -7,24 +7,21 @@ import {
 } from '@blocksuite/affine-shared/services';
 import { FONT_XS, PANEL_BASE } from '@blocksuite/affine-shared/styles';
 import type { AffineTextAttributes } from '@blocksuite/affine-shared/types';
+import { stopPropagation } from '@blocksuite/affine-shared/utils';
 import { type BlockStdScope, ShadowlessElement } from '@blocksuite/block-std';
-import {
-  assertExists,
-  SignalWatcher,
-  WithDisposable,
-} from '@blocksuite/global/utils';
+import { SignalWatcher, WithDisposable } from '@blocksuite/global/utils';
 import { DoneIcon, ResetIcon } from '@blocksuite/icons/lit';
-import type { DeltaInsert, InlineRange } from '@blocksuite/inline';
+import type { InlineRange } from '@blocksuite/inline';
 import { computePosition, inline, offset, shift } from '@floating-ui/dom';
 import { signal } from '@preact/signals-core';
 import { css, html } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { live } from 'lit/directives/live.js';
 
-import type { EditorIconButton } from '../../../../../toolbar/index.js';
-import type { AffineInlineEditor } from '../../affine-inline-specs.js';
+import type { EditorIconButton } from '../../../../../../toolbar/index';
+import type { AffineInlineEditor } from '../../../affine-inline-specs';
 
-export class ReferenceAliasPopup extends SignalWatcher(
+export class ReferencePopup extends SignalWatcher(
   WithDisposable(ShadowlessElement)
 ) {
   static override styles = css`
@@ -41,7 +38,7 @@ export class ReferenceAliasPopup extends SignalWatcher(
       height: 100vh;
     }
 
-    .alias-form-popup {
+    .popover-container {
       ${PANEL_BASE};
       position: absolute;
       display: flex;
@@ -163,11 +160,16 @@ export class ReferenceAliasPopup extends SignalWatcher(
   }
 
   override firstUpdated() {
+    this.disposables.addFromEvent(this, 'keydown', this._onKeydown);
+
+    this.disposables.addFromEvent(this, 'copy', stopPropagation);
+    this.disposables.addFromEvent(this, 'cut', stopPropagation);
+    this.disposables.addFromEvent(this, 'paste', stopPropagation);
+
     this.disposables.addFromEvent(this.overlayMask, 'click', e => {
       e.stopPropagation();
       this.remove();
     });
-    this.disposables.addFromEvent(this, 'keydown', this._onKeydown);
 
     this.inputElement.focus();
     this.inputElement.select();
@@ -177,7 +179,7 @@ export class ReferenceAliasPopup extends SignalWatcher(
     return html`
       <div class="overlay-root">
         <div class="overlay-mask"></div>
-        <div class="alias-form-popup">
+        <div class="popover-container">
           <input
             id="alias-title"
             type="text"
@@ -211,13 +213,15 @@ export class ReferenceAliasPopup extends SignalWatcher(
 
   override updated() {
     const range = this.inlineEditor.toDomRange(this.inlineRange);
-    assertExists(range);
+    if (!range) return;
 
     const visualElement = {
       getBoundingClientRect: () => range.getBoundingClientRect(),
       getClientRects: () => range.getClientRects(),
     };
-    computePosition(visualElement, this.popupContainer, {
+    const popover = this.popoverContainer;
+
+    computePosition(visualElement, popover, {
       middleware: [
         offset(10),
         inline(),
@@ -227,16 +231,14 @@ export class ReferenceAliasPopup extends SignalWatcher(
       ],
     })
       .then(({ x, y }) => {
-        const popupContainer = this.popupContainer;
-        if (!popupContainer) return;
-        popupContainer.style.left = `${x}px`;
-        popupContainer.style.top = `${y}px`;
+        popover.style.left = `${x}px`;
+        popover.style.top = `${y}px`;
       })
       .catch(console.error);
   }
 
-  @property({ type: Object })
-  accessor delta!: DeltaInsert<AffineTextAttributes>;
+  @property({ attribute: false })
+  accessor abortController!: AbortController;
 
   @property({ attribute: false })
   accessor docTitle!: string;
@@ -253,8 +255,8 @@ export class ReferenceAliasPopup extends SignalWatcher(
   @query('.overlay-mask')
   accessor overlayMask!: HTMLDivElement;
 
-  @query('.alias-form-popup')
-  accessor popupContainer!: HTMLDivElement;
+  @query('.popover-container')
+  accessor popoverContainer!: HTMLDivElement;
 
   @property({ type: Object })
   accessor referenceInfo!: ReferenceInfo;
@@ -282,3 +284,18 @@ function track(
     ...props,
   });
 }
+
+// function track(
+//   std: BlockStdScope,
+//   event: LinkEventType,
+//   props: Partial<TelemetryEvent>
+// ) {
+//   std.getOptional(TelemetryProvider)?.track(event, {
+//     segment: 'toolbar',
+//     page: 'doc editor',
+//     module: 'reference toolbar',
+//     type: 'inline view',
+//     category: 'linked doc',
+//     ...props,
+//   });
+// }

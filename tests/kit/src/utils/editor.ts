@@ -4,7 +4,6 @@ import { expect, type Locator, type Page } from '@playwright/test';
 
 declare type _GLOBAL_ = typeof BlocksuiteBlocks;
 
-const AFFINE_FORMAT_BAR_WIDGET = 'affine-format-bar-widget';
 const EDGELESS_ELEMENT_TOOLBAR_WIDGET = 'edgeless-element-toolbar-widget';
 const EDGELESS_TOOLBAR_WIDGET = 'edgeless-toolbar-widget';
 
@@ -67,7 +66,7 @@ export async function focusDocTitle(page: Page, editorIndex = 0) {
 // ================== Page ==================
 export function locateFormatBar(page: Page, editorIndex = 0) {
   return locateEditorContainer(page, editorIndex).locator(
-    AFFINE_FORMAT_BAR_WIDGET
+    'affine-toolbar-widget editor-toolbar'
   );
 }
 

@@ -1,48 +1,20 @@
 import {
-  EmbedOptionProvider,
-  type LinkEventType,
-  type TelemetryEvent,
-  TelemetryProvider,
-} from '@blocksuite/affine-shared/services';
-import type { EmbedOptions } from '@blocksuite/affine-shared/types';
-import {
-  getHostName,
   isValidUrl,
   normalizeUrl,
   stopPropagation,
 } from '@blocksuite/affine-shared/utils';
-import {
-  BLOCK_ID_ATTR,
-  type BlockComponent,
-  type BlockStdScope,
-  TextSelection,
-} from '@blocksuite/block-std';
+import { type BlockStdScope, TextSelection } from '@blocksuite/block-std';
 import { WithDisposable } from '@blocksuite/global/utils';
-import { ArrowDownSmallIcon, MoreVerticalIcon } from '@blocksuite/icons/lit';
+import { DoneIcon } from '@blocksuite/icons/lit';
 import type { InlineRange } from '@blocksuite/inline/types';
 import { computePosition, inline, offset, shift } from '@floating-ui/dom';
-import { html, LitElement, nothing } from 'lit';
+import { html, LitElement } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
-import { join } from 'lit/directives/join.js';
-import { repeat } from 'lit/directives/repeat.js';
 
-import {
-  ConfirmIcon,
-  CopyIcon,
-  DeleteIcon,
-  EditIcon,
-  OpenIcon,
-  UnlinkIcon,
-} from '../../../../../../icons/index.js';
-import { toast } from '../../../../../../toast/index.js';
-import type { EditorIconButton } from '../../../../../../toolbar/index.js';
-import {
-  renderActions,
-  renderToolbarSeparator,
-} from '../../../../../../toolbar/index.js';
-import type { AffineInlineEditor } from '../../../affine-inline-specs.js';
-import { linkPopupStyle } from './styles.js';
+import type { EditorIconButton } from '../../../../../../toolbar/index';
+import type { AffineInlineEditor } from '../../../affine-inline-specs';
+import { linkPopupStyle } from './styles';
 
 export class LinkPopup extends WithDisposable(LitElement) {
   static override styles = linkPopupStyle;
@@ -72,21 +44,6 @@ export class LinkPopup extends WithDisposable(LitElement) {
         ${this._confirmBtnTemplate()}
       </div>
     `;
-  };
-
-  private readonly _delete = () => {
-    if (this.inlineEditor.isValidInlineRange(this.targetInlineRange)) {
-      this.inlineEditor.deleteText(this.targetInlineRange);
-    }
-    this.abortController.abort();
-  };
-
-  private readonly _edit = () => {
-    if (!this.host) return;
-
-    this.type = 'edit';
-
-    track(this.host.std, 'OpenedAliasPopup', { control: 'edit' });
   };
 
   private readonly _editTemplate = () => {
@@ -137,154 +94,6 @@ export class LinkPopup extends WithDisposable(LitElement) {
     `;
   };
 
-  private _embedOptions: EmbedOptions | null = null;
-
-  private readonly _openLink = () => {
-    if (this.openLink) {
-      this.openLink();
-      return;
-    }
-
-    let link = this.currentLink;
-    if (!link) return;
-    if (!link.match(/^[a-zA-Z]+:\/\//)) {
-      link = 'https://' + link;
-    }
-    window.open(link, '_blank');
-    this.abortController.abort();
-  };
-
-  private readonly _removeLink = () => {
-    if (this.inlineEditor.isValidInlineRange(this.targetInlineRange)) {
-      this.inlineEditor.formatText(this.targetInlineRange, {
-        link: null,
-      });
-    }
-    this.abortController.abort();
-  };
-
-  private readonly _toggleViewSelector = (e: Event) => {
-    if (!this.host) return;
-
-    const opened = (e as CustomEvent<boolean>).detail;
-    if (!opened) return;
-
-    track(this.host.std, 'OpenedViewSelector', { control: 'switch view' });
-  };
-
-  private readonly _trackViewSelected = (type: string) => {
-    if (!this.host) return;
-
-    track(this.host.std, 'SelectedView', {
-      control: 'select view',
-      type: `${type} view`,
-    });
-  };
-
-  private readonly _viewTemplate = () => {
-    if (!this.currentLink) return;
-
-    this._embedOptions =
-      this.std
-        ?.get(EmbedOptionProvider)
-        .getEmbedBlockOptions(this.currentLink) ?? null;
-
-    const buttons = [
-      html`
-        <a
-          class="affine-link-preview"
-          href=${this.currentLink}
-          rel="noopener noreferrer"
-          target="_blank"
-          @click=${(e: MouseEvent) => this.openLink?.(e)}
-        >
-          <span>${getHostName(this.currentLink)}</span>
-        </a>
-
-        <editor-icon-button
-          aria-label="Copy"
-          data-testid="copy-link"
-          .tooltip=${'Copy link'}
-          @click=${this._copyUrl}
-        >
-          ${CopyIcon}
-        </editor-icon-button>
-
-        <editor-icon-button
-          aria-label="Edit"
-          data-testid="edit"
-          .tooltip=${'Edit'}
-          @click=${this._edit}
-        >
-          ${EditIcon}
-        </editor-icon-button>
-      `,
-
-      this._viewSelector(),
-
-      html`
-        <editor-menu-button
-          .contentPadding=${'8px'}
-          .button=${html`
-            <editor-icon-button
-              aria-label="More"
-              .tooltip=${'More'}
-              .iconSize=${'20px'}
-            >
-              ${MoreVerticalIcon()}
-            </editor-icon-button>
-          `}
-        >
-          <div data-size="large" data-orientation="vertical">
-            ${this._moreActions()}
-          </div>
-        </editor-menu-button>
-      `,
-    ];
-
-    return html`
-      <editor-toolbar class="affine-link-popover view">
-        ${join(
-          buttons.filter(button => button !== nothing),
-          renderToolbarSeparator
-        )}
-      </editor-toolbar>
-    `;
-  };
-
-  private get _canConvertToEmbedView() {
-    return this._embedOptions?.viewType === 'embed';
-  }
-
-  private get _isBookmarkAllowed() {
-    const block = this.block;
-    if (!block) return false;
-    const schema = block.doc.schema;
-    const parent = block.doc.getParent(block.model);
-    if (!parent) return false;
-    const bookmarkSchema = schema.flavourSchemaMap.get('affine:bookmark');
-    if (!bookmarkSchema) return false;
-    const parentSchema = schema.flavourSchemaMap.get(parent.flavour);
-    if (!parentSchema) return false;
-
-    try {
-      schema.validateSchema(bookmarkSchema, parentSchema);
-    } catch {
-      return false;
-    }
-
-    return true;
-  }
-
-  get block() {
-    const { rootElement } = this.inlineEditor;
-    if (!rootElement) return null;
-
-    const block = rootElement.closest<BlockComponent>(`[${BLOCK_ID_ATTR}]`);
-    if (!block) return null;
-    return block;
-  }
-
   get currentLink() {
     return this.inlineEditor.getFormat(this.targetInlineRange).link;
   }
@@ -296,135 +105,17 @@ export class LinkPopup extends WithDisposable(LitElement) {
     );
   }
 
-  get host() {
-    return this.block?.host;
-  }
-
-  get std() {
-    return this.block?.std;
-  }
-
   private _confirmBtnTemplate() {
     return html`
       <editor-icon-button
         class="affine-confirm-button"
-        .iconSize=${'24px'}
+        .iconSize="${'24px'}"
         .disabled=${true}
         @click=${this._onConfirm}
       >
-        ${ConfirmIcon}
+        ${DoneIcon()}
       </editor-icon-button>
     `;
-  }
-
-  private _convertToCardView() {
-    if (!this.inlineEditor.isValidInlineRange(this.targetInlineRange)) {
-      return;
-    }
-
-    let targetFlavour = 'affine:bookmark';
-
-    if (this._embedOptions && this._embedOptions.viewType === 'card') {
-      targetFlavour = this._embedOptions.flavour;
-    }
-
-    const block = this.block;
-    if (!block) return;
-    const url = this.currentLink;
-    const title = this.currentText;
-    const props = {
-      url,
-      title: title === url ? '' : title,
-    };
-    const doc = block.doc;
-    const parent = doc.getParent(block.model);
-    if (!parent) return;
-    const index = parent.children.indexOf(block.model);
-    doc.addBlock(targetFlavour as never, props, parent, index + 1);
-
-    const totalTextLength = this.inlineEditor.yTextLength;
-    const inlineTextLength = this.targetInlineRange.length;
-    if (totalTextLength === inlineTextLength) {
-      doc.deleteBlock(block.model);
-    } else {
-      this.inlineEditor.formatText(this.targetInlineRange, { link: null });
-    }
-
-    this.abortController.abort();
-  }
-
-  private _convertToEmbedView() {
-    if (!this._embedOptions || this._embedOptions.viewType !== 'embed') {
-      return;
-    }
-
-    const { flavour } = this._embedOptions;
-    const url = this.currentLink;
-
-    const block = this.block;
-    if (!block) return;
-    const doc = block.doc;
-    const parent = doc.getParent(block.model);
-    if (!parent) return;
-    const index = parent.children.indexOf(block.model);
-
-    doc.addBlock(flavour as never, { url }, parent, index + 1);
-
-    const totalTextLength = this.inlineEditor.yTextLength;
-    const inlineTextLength = this.targetInlineRange.length;
-    if (totalTextLength === inlineTextLength) {
-      doc.deleteBlock(block.model);
-    } else {
-      this.inlineEditor.formatText(this.targetInlineRange, { link: null });
-    }
-
-    this.abortController.abort();
-  }
-
-  private _copyUrl() {
-    if (!this.currentLink) return;
-    navigator.clipboard.writeText(this.currentLink).catch(console.error);
-    if (!this.host) return;
-    toast(this.host, 'Copied link to clipboard');
-    this.abortController.abort();
-
-    track(this.host.std, 'CopiedLink', { control: 'copy link' });
-  }
-
-  private _moreActions() {
-    return renderActions([
-      [
-        {
-          label: 'Open',
-          type: 'open',
-          icon: OpenIcon,
-          action: this._openLink,
-        },
-
-        {
-          label: 'Copy',
-          type: 'copy',
-          icon: CopyIcon,
-          action: this._copyUrl,
-        },
-
-        {
-          label: 'Remove link',
-          type: 'remove-link',
-          icon: UnlinkIcon,
-          action: this._removeLink,
-        },
-      ],
-
-      [
-        {
-          type: 'delete',
-          label: 'Delete',
-          icon: DeleteIcon,
-          action: this._delete,
-        },
-      ],
-    ]);
   }
 
   private _onConfirm() {
@@ -442,10 +133,6 @@ export class LinkPopup extends WithDisposable(LitElement) {
         reference: null,
       });
       this.inlineEditor.setInlineRange(this.targetInlineRange);
-      const textSelection = this.host?.selection.find(TextSelection);
-      if (!textSelection) return;
-
-      this.std?.range.syncTextSelectionToRange(textSelection);
     } else if (this.type === 'edit') {
       const text = this.textInput?.value ?? link;
       this.inlineEditor.insertText(this.targetInlineRange, text, {
@@ -456,10 +143,11 @@ export class LinkPopup extends WithDisposable(LitElement) {
         index: this.targetInlineRange.index,
         length: text.length,
       });
-      const textSelection = this.host?.selection.find(TextSelection);
-      if (!textSelection) return;
+    }
 
-      this.std?.range.syncTextSelectionToRange(textSelection);
+    const textSelection = this.std.host.selection.find(TextSelection);
+    if (textSelection) {
+      this.std.range.syncTextSelectionToRange(textSelection);
     }
 
     this.abortController.abort();
@@ -467,9 +155,17 @@ export class LinkPopup extends WithDisposable(LitElement) {
 
   private _onKeydown(e: KeyboardEvent) {
     e.stopPropagation();
-    if (e.key === 'Enter' && !e.isComposing) {
-      e.preventDefault();
-      this._onConfirm();
+    if (!e.isComposing) {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        this.abortController.abort();
+        this.std.host.selection.clear();
+        return;
+      }
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        this._onConfirm();
+      }
     }
   }
 
@@ -484,70 +180,6 @@ export class LinkPopup extends WithDisposable(LitElement) {
     this.confirmButton.requestUpdate();
   }
 
-  private _viewSelector() {
-    if (!this._isBookmarkAllowed) return nothing;
-
-    const buttons = [];
-
-    buttons.push({
-      type: 'inline',
-      label: 'Inline view',
-    });
-
-    buttons.push({
-      type: 'card',
-      label: 'Card view',
-      action: () => this._convertToCardView(),
-    });
-
-    if (this._canConvertToEmbedView) {
-      buttons.push({
-        type: 'embed',
-        label: 'Embed view',
-        action: () => this._convertToEmbedView(),
-      });
-    }
-
-    return html`
-      <editor-menu-button
-        .contentPadding=${'8px'}
-        .button=${html`
-          <editor-icon-button
-            aria-label="Switch view"
-            .justify=${'space-between'}
-            .labelHeight=${'20px'}
-            .iconContainerWidth=${'110px'}
-            .iconSize=${'16px'}
-          >
-            <div class="label">Inline view</div>
-            ${ArrowDownSmallIcon()}
-          </editor-icon-button>
-        `}
-        @toggle=${this._toggleViewSelector}
-      >
-        <div data-size="small" data-orientation="vertical">
-          ${repeat(
-            buttons,
-            button => button.type,
-            ({ type, label, action }) => html`
-              <editor-menu-action
-                data-testid=${`link-to-${type}`}
-                ?data-selected=${type === 'inline'}
-                ?disabled=${type === 'inline'}
-                @click=${() => {
-                  action?.();
-                  this._trackViewSelected(type);
-                }}
-              >
-                ${label}
-              </editor-menu-action>
-            `
-          )}
-        </div>
-      </editor-menu-button>
-    `;
-  }
-
   override connectedCallback() {
     super.connectedCallback();
 
@@ -555,45 +187,38 @@ export class LinkPopup extends WithDisposable(LitElement) {
       return;
     }
 
-    if (this.type === 'edit' || this.type === 'create') {
-      // disable body scroll
-      this._bodyOverflowStyle = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      this.disposables.add({
-        dispose: () => {
-          document.body.style.overflow = this._bodyOverflowStyle;
-        },
-      });
-    }
+    // disable body scroll
+    this._bodyOverflowStyle = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    this.disposables.add({
+      dispose: () => {
+        document.body.style.overflow = this._bodyOverflowStyle;
+      },
+    });
   }
 
-  protected override firstUpdated() {
-    if (!this.linkInput) return;
+  override firstUpdated() {
+    this.disposables.addFromEvent(this, 'keydown', this._onKeydown);
 
-    this._disposables.addFromEvent(this.linkInput, 'copy', stopPropagation);
-    this._disposables.addFromEvent(this.linkInput, 'cut', stopPropagation);
-    this._disposables.addFromEvent(this.linkInput, 'paste', stopPropagation);
+    this.disposables.addFromEvent(this, 'copy', stopPropagation);
+    this.disposables.addFromEvent(this, 'cut', stopPropagation);
+    this.disposables.addFromEvent(this, 'paste', stopPropagation);
+
+    this.disposables.addFromEvent(this.overlayMask, 'click', e => {
+      e.stopPropagation();
+      this.abortController.abort();
+      this.std.host.selection.clear();
+    });
   }
 
   override render() {
     return html`
       <div class="overlay-root">
-        ${this.type === 'view'
-          ? nothing
-          : html`
-              <div
-                class="affine-link-popover-overlay-mask"
-                @click=${() => {
-                  this.abortController.abort();
-                  this.host?.selection.clear();
-                }}
-              ></div>
-            `}
-        <div class="affine-link-popover-container" @keydown=${this._onKeydown}>
+        <div class="overlay-mask"></div>
+        <div class="popover-container">
           ${choose(this.type, [
             ['create', this._createTemplate],
             ['edit', this._editTemplate],
-            ['view', this._viewTemplate],
           ])}
         </div>
         <div class="mock-selection-container"></div>
@@ -607,29 +232,29 @@ export class LinkPopup extends WithDisposable(LitElement) {
       return;
     }
 
-    if (this.type !== 'view') {
-      const domRects = range.getClientRects();
+    const domRects = range.getClientRects();
 
-      Object.values(domRects).forEach(domRect => {
-        if (!this.mockSelectionContainer) {
-          return;
-        }
-        const mockSelection = document.createElement('div');
-        mockSelection.classList.add('mock-selection');
-        mockSelection.style.left = `${domRect.left}px`;
-        mockSelection.style.top = `${domRect.top}px`;
-        mockSelection.style.width = `${domRect.width}px`;
-        mockSelection.style.height = `${domRect.height}px`;
+    Object.values(domRects).forEach(domRect => {
+      if (!this.mockSelectionContainer) {
+        return;
+      }
+      const mockSelection = document.createElement('div');
+      mockSelection.classList.add('mock-selection');
+      mockSelection.style.left = `${domRect.left}px`;
+      mockSelection.style.top = `${domRect.top}px`;
+      mockSelection.style.width = `${domRect.width}px`;
+      mockSelection.style.height = `${domRect.height}px`;
 
-        this.mockSelectionContainer.append(mockSelection);
-      });
-    }
+      this.mockSelectionContainer.append(mockSelection);
+    });
 
     const visualElement = {
       getBoundingClientRect: () => range.getBoundingClientRect(),
       getClientRects: () => range.getClientRects(),
     };
-    computePosition(visualElement, this.popupContainer, {
+    const popover = this.popoverContainer;
+
+    computePosition(visualElement, popover, {
       middleware: [
         offset(10),
         inline(),
@@ -639,10 +264,8 @@ export class LinkPopup extends WithDisposable(LitElement) {
       ],
     })
       .then(({ x, y }) => {
-        const popupContainer = this.popupContainer;
-        if (!popupContainer) return;
-        popupContainer.style.left = `${x}px`;
-        popupContainer.style.top = `${y}px`;
+        popover.style.left = `${x}px`;
+        popover.style.top = `${y}px`;
       })
       .catch(console.error);
   }
@@ -662,11 +285,11 @@ export class LinkPopup extends WithDisposable(LitElement) {
   @query('.mock-selection-container')
   accessor mockSelectionContainer!: HTMLDivElement;
 
-  @property({ attribute: false })
-  accessor openLink: ((e?: MouseEvent) => void) | null = null;
+  @query('.overlay-mask')
+  accessor overlayMask!: HTMLDivElement;
 
-  @query('.affine-link-popover-container')
-  accessor popupContainer!: HTMLDivElement;
+  @query('.popover-container')
+  accessor popoverContainer!: HTMLDivElement;
 
   @property({ attribute: false })
   accessor targetInlineRange!: InlineRange;
@@ -675,20 +298,23 @@ export class LinkPopup extends WithDisposable(LitElement) {
   accessor textInput: HTMLInputElement | null = null;
 
   @property()
-  accessor type: 'create' | 'edit' | 'view' = 'create';
+  accessor type: 'create' | 'edit' = 'create';
+
+  @property({ attribute: false })
+  accessor std!: BlockStdScope;
 }
 
-function track(
-  std: BlockStdScope,
-  event: LinkEventType,
-  props: Partial<TelemetryEvent>
-) {
-  std.getOptional(TelemetryProvider)?.track(event, {
-    segment: 'toolbar',
-    page: 'doc editor',
-    module: 'link toolbar',
-    type: 'inline view',
-    category: 'link',
-    ...props,
-  });
-}
+// function track(
+//   std: BlockStdScope,
+//   event: LinkEventType,
+//   props: Partial<TelemetryEvent>
+// ) {
+//   std.getOptional(TelemetryProvider)?.track(event, {
+//     segment: 'toolbar',
+//     page: 'doc editor',
+//     module: 'link toolbar',
+//     type: 'inline view',
+//     category: 'link',
+//     ...props,
+//   });
+// }

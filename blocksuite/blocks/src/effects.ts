@@ -19,6 +19,7 @@ import { effects as blockTableEffects } from '@blocksuite/affine-block-table/eff
 import { BlockSelection } from '@blocksuite/affine-components/block-selection';
 import { BlockZeroWidth } from '@blocksuite/affine-components/block-zero-width';
 import { effects as componentCaptionEffects } from '@blocksuite/affine-components/caption';
+import { effects as componentCardStyleDropdownEffects } from '@blocksuite/affine-components/card-style-dropdown';
 import { effects as componentColorPickerEffects } from '@blocksuite/affine-components/color-picker';
 import { effects as componentContextMenuEffects } from '@blocksuite/affine-components/context-menu';
 import { effects as componentDatePickerEffects } from '@blocksuite/affine-components/date-picker';
@@ -26,13 +27,17 @@ import { effects as componentDocTitleEffects } from '@blocksuite/affine-componen
 import { effects as componentDropIndicatorEffects } from '@blocksuite/affine-components/drop-indicator';
 import { effects as componentEmbedCardModalEffects } from '@blocksuite/affine-components/embed-card-modal';
 import { FilterableListComponent } from '@blocksuite/affine-components/filterable-list';
+import { effects as componentHighlightDropdownEffects } from '@blocksuite/affine-components/highlight-dropdown';
 import { IconButton } from '@blocksuite/affine-components/icon-button';
+import { effects as componentLinkPreviewEffects } from '@blocksuite/affine-components/link-preview';
+import { effects as componentLinkedDocTitleEffects } from '@blocksuite/affine-components/linked-doc-title';
 import { effects as componentPortalEffects } from '@blocksuite/affine-components/portal';
 import { effects as componentRichTextEffects } from '@blocksuite/affine-components/rich-text';
 import { SmoothCorner } from '@blocksuite/affine-components/smooth-corner';
 import { effects as componentToggleButtonEffects } from '@blocksuite/affine-components/toggle-button';
 import { ToggleSwitch } from '@blocksuite/affine-components/toggle-switch';
 import { effects as componentToolbarEffects } from '@blocksuite/affine-components/toolbar';
+import { effects as componentViewDropdownEffects } from '@blocksuite/affine-components/view-dropdown';
 import { effects as fragmentFramePanelEffects } from '@blocksuite/affine-fragment-frame-panel/effects';
 import { effects as fragmentOutlineEffects } from '@blocksuite/affine-fragment-outline/effects';
 import { effects as widgetDragHandleEffects } from '@blocksuite/affine-widget-drag-handle/effects';
@@ -85,8 +90,15 @@ export function effects() {
   componentColorPickerEffects();
   componentEmbedCardModalEffects();
   componentDocTitleEffects();
+  componentViewDropdownEffects();
+  componentCardStyleDropdownEffects();
+  componentLinkPreviewEffects(),
+  componentLinkedDocTitleEffects(),
+  componentHighlightDropdownEffects(),
 
   widgetScrollAnchoringEffects();
+  widgetMobileToolbarEffects();
+  widgetLinkedDocEffects();
   widgetFrameTitleEffects();
   widgetRemoteSelectionEffects();
   widgetDragHandleEffects();
