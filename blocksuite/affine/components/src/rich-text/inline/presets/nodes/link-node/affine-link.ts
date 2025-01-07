@@ -1,13 +1,12 @@
 import type { ReferenceInfo } from '@blocksuite/affine-model';
-import { ParseDocUrlProvider } from '@blocksuite/affine-shared/services';
+import {
+  ParseDocUrlProvider,
+  ToolbarRegistryIdentifier,
+} from '@blocksuite/affine-shared/services';
 import type { AffineTextAttributes } from '@blocksuite/affine-shared/types';
 import type { BlockComponent, BlockStdScope } from '@blocksuite/block-std';
-import {
-  BLOCK_ID_ATTR,
-  BlockSelection,
-  ShadowlessElement,
-  TextSelection,
-} from '@blocksuite/block-std';
+import { BLOCK_ID_ATTR, ShadowlessElement } from '@blocksuite/block-std';
+import { WithDisposable } from '@blocksuite/global/utils';
 import {
   type DeltaInsert,
   INLINE_ROOT_ATTR,
@@ -16,15 +15,13 @@ import {
 } from '@blocksuite/inline';
 import { css, html } from 'lit';
 import { property } from 'lit/decorators.js';
-import { ref } from 'lit/directives/ref.js';
 import { type StyleInfo, styleMap } from 'lit/directives/style-map.js';
 
-import { HoverController } from '../../../../../hover/index.js';
-import { RefNodeSlotsProvider } from '../../../../extension/index.js';
-import { affineTextStyles } from '../affine-text.js';
-import { toggleLinkPopup } from './link-popup/toggle-link-popup.js';
+import { whenHover } from '../../../../../hover/index';
+import { RefNodeSlotsProvider } from '../../../../extension/index';
+import { affineTextStyles } from '../affine-text';
 
-export class AffineLink extends ShadowlessElement {
+export class AffineLink extends WithDisposable(ShadowlessElement) {
   static override styles = css`
     affine-link a:hover [data-v-text='true'] {
       text-decoration: underline;
@@ -66,42 +63,42 @@ export class AffineLink extends ShadowlessElement {
     });
   };
 
-  private readonly _whenHover = new HoverController(
-    this,
-    ({ abortController }) => {
-      if (this.block?.doc.readonly) {
-        return null;
-      }
-      if (!this.inlineEditor || !this.selfInlineRange) {
-        return null;
+  _whenHover = whenHover(
+    hovered => {
+      const message$ = this.std.get(ToolbarRegistryIdentifier).message$;
+
+      if (hovered) {
+        message$.value = {
+          flavour: 'affine:link',
+          element: this,
+          setFloating: this._whenHover.setFloating,
+        };
+        return;
       }
 
-      const selection = this.std.selection;
-      const textSelection = selection?.find(TextSelection);
-      if (!!textSelection && !textSelection.isCollapsed()) {
-        return null;
-      }
-
-      const blockSelections = selection?.filter(BlockSelection);
-      if (blockSelections?.length) {
-        return null;
-      }
-
-      return {
-        template: toggleLinkPopup(
-          this.inlineEditor,
-          'view',
-          this.selfInlineRange,
-          abortController,
-          (e?: MouseEvent) => {
-            this.openLink(e);
-            abortController.abort();
-          }
-        ),
-      };
+      // Clears previous bindings
+      message$.value = null;
+      this._whenHover.setFloating();
     },
     { enterDelay: 500 }
   );
+
+  override connectedCallback() {
+    super.connectedCallback();
+
+    this._whenHover.setReference(this);
+
+    const message$ = this.std.get(ToolbarRegistryIdentifier).message$;
+
+    this._disposables.add({
+      dispose: () => {
+        if (message$?.value) {
+          message$.value = null;
+        }
+        this._whenHover.dispose();
+      },
+    });
+  }
 
   // Workaround for links not working in contenteditable div
   // see also https://stackoverflow.com/questions/12059211/how-to-make-clickable-anchor-in-contenteditable-div
@@ -149,7 +146,6 @@ export class AffineLink extends ShadowlessElement {
 
   private _renderLink(style: StyleInfo) {
     return html`<a
-      ${ref(this._whenHover.setReference)}
       href=${this.link}
       rel="noopener noreferrer"
       target="_blank"

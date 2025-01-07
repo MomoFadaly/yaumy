@@ -21,15 +21,13 @@ export const getBlockIndexCommand: Command<
   const parentModel = ctx.std.store.getParent(path);
   if (!parentModel) return;
 
-  const parent = ctx.std.view.getBlock(parentModel.id);
-  if (!parent) return;
+  const parentBlock = ctx.std.view.getBlock(parentModel.id);
+  if (!parentBlock) return;
 
-  const index = parent.childBlocks.findIndex(x => {
-    return x.blockId === path;
-  });
+  const blockIndex = parentBlock.childBlocks.findIndex(x => x.blockId === path);
 
   next({
-    blockIndex: index,
-    parentBlock: parent as BlockComponent,
+    blockIndex,
+    parentBlock,
   });
 };

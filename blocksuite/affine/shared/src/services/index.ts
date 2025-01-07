@@ -19,3 +19,4 @@ export * from './sidebar-service';
 export * from './telemetry-service';
 export * from './theme-service';
 export * from './virtual-keyboard-service';
+export * from './toolbar-service';

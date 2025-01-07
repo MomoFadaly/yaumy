@@ -1,3 +1,5 @@
+import type { BlockModel } from '@blocksuite/store';
+
 import { EmbedFigmaModel } from './figma';
 import { EmbedGithubModel } from './github';
 import type { EmbedHtmlModel } from './html';
@@ -6,21 +8,31 @@ import { EmbedLoomModel } from './loom';
 import { EmbedSyncedDocModel } from './synced-doc';
 import { EmbedYoutubeModel } from './youtube';
 
-export type ExternalEmbedModel =
-  | EmbedFigmaModel
-  | EmbedGithubModel
-  | EmbedLoomModel
-  | EmbedYoutubeModel;
+export const ExternalEmbedModels = [
+  EmbedFigmaModel,
+  EmbedGithubModel,
+  EmbedLoomModel,
+  EmbedYoutubeModel,
+] as const;
 
-export type InternalEmbedModel = EmbedLinkedDocModel | EmbedSyncedDocModel;
+export const InternalEmbedModels = [
+  EmbedLinkedDocModel,
+  EmbedSyncedDocModel,
+] as const;
 
-export type LinkableEmbedModel = ExternalEmbedModel | InternalEmbedModel;
+export type ExternalEmbedModel = (typeof ExternalEmbedModels)[number];
+
+export type InternalEmbedModel = (typeof InternalEmbedModels)[number];
+
+export type LinkableEmbedModel = InstanceType<
+  ExternalEmbedModel | InternalEmbedModel
+>;
 
 export type BuiltInEmbedModel = LinkableEmbedModel | EmbedHtmlModel;
 
 export function isExternalEmbedModel(
-  model: BuiltInEmbedModel
-): model is ExternalEmbedModel {
+  model: BlockModel
+): model is InstanceType<ExternalEmbedModel> {
   return (
     model instanceof EmbedFigmaModel ||
     model instanceof EmbedGithubModel ||
@@ -30,8 +42,8 @@ export function isExternalEmbedModel(
 }
 
 export function isInternalEmbedModel(
-  model: BuiltInEmbedModel
-): model is InternalEmbedModel {
+  model: BlockModel
+): model is InstanceType<InternalEmbedModel> {
   return (
     model instanceof EmbedLinkedDocModel || model instanceof EmbedSyncedDocModel
   );

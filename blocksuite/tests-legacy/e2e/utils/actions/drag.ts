@@ -202,7 +202,9 @@ export async function dragBlockToPoint(
 
 export async function moveToImage(page: Page) {
   const { x, y } = await page.evaluate(() => {
-    const bottomRightButton = document.querySelector('img') as HTMLElement;
+    const bottomRightButton = document.querySelector(
+      'affine-image img'
+    ) as HTMLElement;
     const imageClient = bottomRightButton.getBoundingClientRect();
     const y = imageClient.top;
     return {

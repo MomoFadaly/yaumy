@@ -99,7 +99,7 @@ export const linkPopupStyle = css`
     background-color: rgba(35, 131, 226, 0.28);
   }
 
-  .affine-link-popover-container {
+  .popover-container {
     z-index: var(--affine-z-index-popover);
     animation: affine-popover-fade-in 0.2s ease;
     position: absolute;
@@ -116,46 +116,13 @@ export const linkPopupStyle = css`
     }
   }
 
-  .affine-link-popover-overlay-mask {
+  .overlay-mask {
     position: fixed;
     top: 0;
     left: 0;
     width: 100vw;
     height: 100vh;
     z-index: var(--affine-z-index-popover);
-  }
-
-  .affine-link-preview {
-    display: flex;
-    justify-content: flex-start;
-    min-width: 60px;
-    max-width: 140px;
-    padding: var(--1, 0px);
-    border-radius: var(--1, 0px);
-    opacity: var(--add, 1);
-    user-select: none;
-    cursor: pointer;
-
-    color: var(--affine-link-color);
-    font-feature-settings:
-      'clig' off,
-      'liga' off;
-    font-family: var(--affine-font-family);
-    font-size: var(--affine-font-sm);
-    font-style: normal;
-    font-weight: 400;
-    text-decoration: none;
-    text-wrap: nowrap;
-  }
-
-  .affine-link-preview > span {
-    display: inline-block;
-    -webkit-line-clamp: 1;
-    -webkit-box-orient: vertical;
-
-    text-overflow: ellipsis;
-    overflow: hidden;
-    opacity: var(--add, 1);
   }
 
   .affine-link-popover.create {

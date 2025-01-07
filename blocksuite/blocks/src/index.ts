@@ -28,6 +28,7 @@ export {
   DocTitle,
   getDocTitleByEditorHost,
 } from '@blocksuite/affine-components/doc-title';
+export { toggleEmbedCardEditModal } from '@blocksuite/affine-components/embed-card-modal';
 export {
   HoverController,
   whenHover,
@@ -41,6 +42,11 @@ export {
   TagsIcon,
 } from '@blocksuite/affine-components/icons';
 export * from '@blocksuite/affine-components/icons';
+export {
+  notifyLinkedDocClearedAliases,
+  notifyLinkedDocSwitchedToCard,
+  notifyLinkedDocSwitchedToEmbed,
+} from '@blocksuite/affine-components/notification';
 export * from '@blocksuite/affine-components/peek';
 export {
   createLitPortal,

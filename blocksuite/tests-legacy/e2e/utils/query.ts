@@ -4,7 +4,7 @@ import { waitNextFrame } from './actions/misc.js';
 import { assertAlmostEqual } from './asserts.js';
 
 export function getFormatBar(page: Page) {
-  const formatBar = page.locator('.affine-format-bar-widget');
+  const formatBar = page.locator('affine-toolbar-widget editor-toolbar');
   const boldBtn = formatBar.getByTestId('bold');
   const italicBtn = formatBar.getByTestId('italic');
   const underlineBtn = formatBar.getByTestId('underline');

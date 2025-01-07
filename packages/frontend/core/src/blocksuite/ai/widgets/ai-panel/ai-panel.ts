@@ -8,6 +8,12 @@ import {
   AFFINE_VIEWPORT_OVERLAY_WIDGET,
   type AffineViewportOverlayWidget,
   DocModeProvider,
+  NotificationProvider,
+  ThemeProvider,
+  ToolbarFlag,
+  ToolbarRegistryIdentifier,
+} from '@blocksuite/affine-shared/services';
+import {
   getPageRootByElement,
   NotificationProvider,
   stopPropagation,
@@ -512,27 +518,24 @@ export class AffineAIPanelWidget extends WidgetComponent {
   protected override willUpdate(changed: PropertyValues): void {
     const prevState = changed.get('state');
     if (prevState) {
-      if (prevState === 'hidden') {
+      const shouldBeHidden = prevState === 'hidden';
+
+      if (shouldBeHidden) {
         this._selection = this.host.selection.value;
       } else {
         this.restoreSelection();
       }
 
-      // tell format bar to show or hide
-      const rootBlockId = this.host.doc.root?.id;
-      const formatBar = rootBlockId
-        ? this.host.view.getWidget(AFFINE_FORMAT_BAR_WIDGET, rootBlockId)
-        : null;
-
-      if (formatBar) {
-        formatBar.requestUpdate();
-      }
+      // tell toolbar to show or hide
+      this.std
+        .get(ToolbarRegistryIdentifier)
+        .flags.toggle(ToolbarFlag.Hiding, shouldBeHidden);
     }
 
-    if (this.state !== 'hidden') {
-      this.viewportOverlayWidget?.lock();
-    } else {
+    if (this.state === 'hidden') {
       this.viewportOverlayWidget?.unlock();
+    } else {
+      this.viewportOverlayWidget?.lock();
     }
 
     this.dataset.state = this.state;

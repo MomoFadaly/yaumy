@@ -424,9 +424,11 @@ export const PackageList = [
     location: 'blocksuite/affine/widget-toolbar',
     name: '@blocksuite/affine-widget-toolbar',
     workspaceDependencies: [
+      'blocksuite/affine/components',
       'blocksuite/affine/model',
       'blocksuite/affine/shared',
       'blocksuite/framework/block-std',
+      'blocksuite/affine/data-view',
       'blocksuite/framework/global',
     ],
   },

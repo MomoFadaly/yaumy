@@ -51,7 +51,7 @@ const FILE_PATH = path.resolve(
 function getAttachment(page: Page) {
   const attachment = page.locator('affine-attachment');
   const loading = attachment.locator('.affine-attachment-card.loading');
-  const toolbar = page.locator('.affine-attachment-toolbar');
+  const toolbar = page.locator('affine-toolbar-widget editor-toolbar');
   const switchViewButton = toolbar.getByRole('button', { name: 'Switch view' });
   const renameBtn = toolbar.getByRole('button', { name: 'Rename' });
   const renameInput = page.locator('.affine-attachment-rename-container input');
@@ -110,7 +110,7 @@ function getAttachment(page: Page) {
       await assertRichImage(page, 1);
     },
     rename: async (newName: string) => {
-      await attachment.hover();
+      await attachment.click();
       await expect(toolbar).toBeVisible();
       await renameBtn.click();
       await page.keyboard.press(`${SHORT_KEY}+a`, { delay: 50 });
@@ -207,7 +207,7 @@ test('should rename attachment works', async ({ page }) => {
 
   expect(await getName()).toBe(FILE_NAME);
 
-  await attachment.hover();
+  await attachment.click();
   await expect(renameBtn).toBeVisible();
   await renameBtn.click();
   await assertKeyboardWorkInInput(page, renameInput);
@@ -225,14 +225,20 @@ test('should rename attachment works', async ({ page }) => {
 test('should turn attachment to image works', async ({ page }, testInfo) => {
   await enterPlaygroundRoom(page);
   await initEmptyParagraphState(page);
-  const { insertAttachment, waitLoading, turnToEmbed, turnImageToCard } =
-    getAttachment(page);
+  const {
+    attachment,
+    insertAttachment,
+    waitLoading,
+    turnToEmbed,
+    turnImageToCard,
+  } = getAttachment(page);
 
   await focusRichText(page);
   await insertAttachment();
   // Wait for the attachment to be uploaded
   await waitLoading();
 
+  await attachment.click();
   await turnToEmbed();
 
   expect(await getPageSnapshot(page, true)).toMatchSnapshot(

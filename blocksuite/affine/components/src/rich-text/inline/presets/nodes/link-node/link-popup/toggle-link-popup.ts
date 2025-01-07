@@ -1,20 +1,21 @@
+import type { BlockStdScope } from '@blocksuite/block-std';
 import type { InlineRange } from '@blocksuite/inline';
 
-import type { AffineInlineEditor } from '../../../affine-inline-specs.js';
-import { LinkPopup } from './link-popup.js';
+import type { AffineInlineEditor } from '../../../affine-inline-specs';
+import { LinkPopup } from './link-popup';
 
 export function toggleLinkPopup(
-  inlineEditor: AffineInlineEditor,
+  std: BlockStdScope,
   type: LinkPopup['type'],
+  inlineEditor: AffineInlineEditor,
   targetInlineRange: InlineRange,
-  abortController: AbortController,
-  openLink: ((e?: MouseEvent) => void) | null = null
+  abortController: AbortController
 ): LinkPopup {
   const popup = new LinkPopup();
-  popup.inlineEditor = inlineEditor;
+  popup.std = std;
   popup.type = type;
+  popup.inlineEditor = inlineEditor;
   popup.targetInlineRange = targetInlineRange;
-  popup.openLink = openLink;
   popup.abortController = abortController;
 
   document.body.append(popup);

@@ -68,7 +68,7 @@ export const toggleUnderline = toggleTextStyleCommandWrapper('underline');
 export const toggleStrike = toggleTextStyleCommandWrapper('strike');
 export const toggleCode = toggleTextStyleCommandWrapper('code');
 
-export const toggleLink: Command = (_ctx, next) => {
+export const toggleLink: Command = (ctx, next) => {
   const selection = document.getSelection();
   if (!selection || selection.rangeCount === 0) return false;
 
@@ -92,8 +92,9 @@ export const toggleLink: Command = (_ctx, next) => {
 
   const abortController = new AbortController();
   const popup = toggleLinkPopup(
-    inlineEditor,
+    ctx.std,
     'create',
+    inlineEditor,
     targetInlineRange,
     abortController
   );

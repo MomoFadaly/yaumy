@@ -3,20 +3,17 @@ import {
   DEFAULT_DOC_NAME,
   REFERENCE_NODE,
 } from '@blocksuite/affine-shared/consts';
-import { DocDisplayMetaProvider } from '@blocksuite/affine-shared/services';
+import {
+  DocDisplayMetaProvider,
+  ToolbarRegistryIdentifier,
+} from '@blocksuite/affine-shared/services';
 import type { AffineTextAttributes } from '@blocksuite/affine-shared/types';
 import {
   cloneReferenceInfo,
   referenceToNode,
 } from '@blocksuite/affine-shared/utils';
-import {
-  BLOCK_ID_ATTR,
-  type BlockComponent,
-  BlockSelection,
-  type BlockStdScope,
-  ShadowlessElement,
-  TextSelection,
-} from '@blocksuite/block-std';
+import type { BlockComponent, BlockStdScope } from '@blocksuite/block-std';
+import { BLOCK_ID_ATTR, ShadowlessElement } from '@blocksuite/block-std';
 import { WithDisposable } from '@blocksuite/global/utils';
 import { LinkedPageIcon } from '@blocksuite/icons/lit';
 import {
@@ -31,15 +28,14 @@ import { css, html, nothing } from 'lit';
 import { property, state } from 'lit/decorators.js';
 import { choose } from 'lit/directives/choose.js';
 import { ifDefined } from 'lit/directives/if-defined.js';
-import { ref } from 'lit/directives/ref.js';
 import { styleMap } from 'lit/directives/style-map.js';
 
-import { HoverController } from '../../../../../hover/index.js';
-import { Peekable } from '../../../../../peek/index.js';
-import { RefNodeSlotsProvider } from '../../../../extension/index.js';
-import { affineTextStyles } from '../affine-text.js';
-import type { ReferenceNodeConfigProvider } from './reference-config.js';
-import { toggleReferencePopup } from './reference-popup.js';
+import { whenHover } from '../../../../../hover/index';
+import { Peekable } from '../../../../../peek/index';
+import { RefNodeSlotsProvider } from '../../../../extension/index';
+import { affineTextStyles } from '../affine-text';
+import type { ReferenceNodeConfigProvider } from './reference-config';
+import type { DocLinkClickedEvent } from './types';
 
 @Peekable({ action: false })
 export class AffineReference extends WithDisposable(ShadowlessElement) {
@@ -73,6 +69,10 @@ export class AffineReference extends WithDisposable(ShadowlessElement) {
     }
   `;
 
+  get docTitle() {
+    return this.refMeta?.title ?? DEFAULT_DOC_NAME;
+  }
+
   private readonly _updateRefMeta = (doc: Store) => {
     const refAttribute = this.delta.attributes?.reference;
     if (!refAttribute) {
@@ -92,48 +92,6 @@ export class AffineReference extends WithDisposable(ShadowlessElement) {
   // Since the linked doc may be deleted, the `_refMeta` could be undefined.
   @state()
   accessor refMeta: DocMeta | undefined = undefined;
-
-  private readonly _whenHover: HoverController = new HoverController(
-    this,
-    ({ abortController }) => {
-      if (
-        this.config.hidePopup ||
-        this.doc?.readonly ||
-        this.closest('.prevent-reference-popup') ||
-        !this.selfInlineRange ||
-        !this.inlineEditor
-      ) {
-        return null;
-      }
-
-      const selection = this.std.selection;
-      if (!selection) {
-        return null;
-      }
-      const textSelection = selection.find(TextSelection);
-      if (!!textSelection && !textSelection.isCollapsed()) {
-        return null;
-      }
-
-      const blockSelections = selection.filter(BlockSelection);
-      if (blockSelections.length) {
-        return null;
-      }
-
-      return {
-        template: toggleReferencePopup(
-          this,
-          this.referenceToNode(),
-          this.referenceInfo,
-          this.inlineEditor,
-          this.selfInlineRange,
-          this.refMeta?.title ?? DEFAULT_DOC_NAME,
-          abortController
-        ),
-      };
-    },
-    { enterDelay: 500 }
-  );
 
   get _icon() {
     const { pageId, params, title } = this.referenceInfo;
@@ -187,16 +145,53 @@ export class AffineReference extends WithDisposable(ShadowlessElement) {
     return selfInlineRange;
   }
 
-  private _onClick() {
+  readonly open = (event?: Partial<DocLinkClickedEvent>) => {
     if (!this.config.interactable) return;
+
     this.std.getOptional(RefNodeSlotsProvider)?.docLinkClicked.emit({
       ...this.referenceInfo,
+      ...event,
       host: this.std.host,
     });
-  }
+  };
+
+  _whenHover = whenHover(
+    hovered => {
+      if (!this.config.interactable) return;
+
+      const message$ = this.std.get(ToolbarRegistryIdentifier).message$;
+
+      if (hovered) {
+        message$.value = {
+          flavour: 'affine:reference',
+          element: this,
+          setFloating: this._whenHover.setFloating,
+        };
+        return;
+      }
+
+      // Clears previous bindings
+      message$.value = null;
+      this._whenHover.setFloating();
+    },
+    { enterDelay: 500 }
+  );
 
   override connectedCallback() {
     super.connectedCallback();
+
+    this._whenHover.setReference(this);
+
+    const message$ = this.std.get(ToolbarRegistryIdentifier).message$;
+
+    this._disposables.add({
+      dispose: () => {
+        if (message$?.value) {
+          message$.value = null;
+        }
+        this._whenHover.dispose();
+      },
+    });
 
     if (!this.config) {
       console.error('`reference-node` need `ReferenceNodeConfig`.');
@@ -281,11 +276,10 @@ export class AffineReference extends WithDisposable(ShadowlessElement) {
     // we need to add `<v-text .str=${ZERO_WIDTH_NON_JOINER}></v-text>` in an
     // embed element to make sure inline range calculation is correct
     return html`<span
-      ${this.config.interactable ? ref(this._whenHover.setReference) : ''}
       data-selected=${this.selected}
       class="affine-reference"
       style=${styleMap(style)}
-      @click=${this._onClick}
+      @click=${(event: MouseEvent) => this.open({ event })}
       >${content}<v-text .str=${ZERO_WIDTH_NON_JOINER}></v-text
     ></span>`;
   }

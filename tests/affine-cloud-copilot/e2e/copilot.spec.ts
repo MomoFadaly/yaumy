@@ -264,7 +264,7 @@ test.describe('chat panel', () => {
     await focusToEditor(page);
     // insert below
     await page.getByTestId('action-insert-below').click();
-    await page.waitForSelector('affine-format-bar-widget editor-toolbar');
+    await page.waitForSelector('affine-toolbar-widget editor-toolbar');
     const editorContent = await getEditorContent(page);
     expect(editorContent).toBe(content);
   });

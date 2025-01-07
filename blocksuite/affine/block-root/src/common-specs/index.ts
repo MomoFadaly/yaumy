@@ -5,6 +5,7 @@ import {
   EmbedOptionService,
   PageViewportServiceExtension,
   ThemeService,
+  ToolbarRegistryExtension,
 } from '@blocksuite/affine-shared/services';
 import { dragHandleWidget } from '@blocksuite/affine-widget-drag-handle';
 import { docRemoteSelectionWidget } from '@blocksuite/affine-widget-remote-selection';
@@ -14,12 +15,13 @@ import type { ExtensionType } from '@blocksuite/store';
 
 import { RootBlockAdapterExtensions } from '../adapters/extension';
 import {
-  embedCardToolbarWidget,
-  formatBarWidget,
+  docRemoteSelectionWidget,
+  dragHandleWidget,
   innerModalWidget,
   linkedDocWidget,
   modalWidget,
   slashMenuWidget,
+  toolbarWidget,
   viewportOverlayWidget,
 } from './widgets';
 
@@ -31,6 +33,7 @@ export const CommonSpecs: ExtensionType[] = [
   PageViewportServiceExtension,
   DNDAPIExtension,
   FileDropExtension,
+  ToolbarRegistryExtension,
   ...RootBlockAdapterExtensions,
 
   modalWidget,
@@ -38,11 +41,10 @@ export const CommonSpecs: ExtensionType[] = [
   slashMenuWidget,
   linkedDocWidget,
   dragHandleWidget,
-  embedCardToolbarWidget,
-  formatBarWidget,
   docRemoteSelectionWidget,
   viewportOverlayWidget,
   scrollAnchoringWidget,
+  toolbarWidget,
 ];
 
 export * from './widgets';
