@@ -8,9 +8,11 @@ import {
   EventEmitter,
   InternalServerError,
   InvalidCheckoutParameters,
+  Mutex,
   Runtime,
   SubscriptionAlreadyExists,
   SubscriptionPlanNotFound,
+  TooManyRequest,
   URLHelper,
 } from '../../../base';
 import {
@@ -59,7 +61,8 @@ export class UserSubscriptionManager extends SubscriptionManager {
     private readonly runtime: Runtime,
     private readonly feature: FeatureManagementService,
     private readonly event: EventEmitter,
-    private readonly url: URLHelper
+    private readonly url: URLHelper,
+    private readonly mutex: Mutex
   ) {
     super(stripe, db);
   }
@@ -400,7 +403,7 @@ export class UserSubscriptionManager extends SubscriptionManager {
       },
     });
 
-    const invoice = this.db.invoice.upsert({
+    const invoice = await this.db.invoice.upsert({
       where: {
         stripeInvoiceId: stripeInvoice.id,
       },
@@ -414,6 +417,14 @@ export class UserSubscriptionManager extends SubscriptionManager {
     // onetime and lifetime subscription is a special "subscription" that doesn't get involved with stripe subscription system
     // we track the deals by invoice only.
     if (stripeInvoice.status === 'paid') {
+      await using lock = await this.mutex.acquire(
+        `redeem-onetime-subscription:${stripeInvoice.id}`
+      );
+
+      if (!lock) {
+        throw new TooManyRequest();
+      }
+
       if (lookupKey.recurring === SubscriptionRecurring.Lifetime) {
         await this.saveLifetimeSubscription(knownInvoice);
       } else if (lookupKey.variant === SubscriptionVariant.Onetime) {
@@ -424,9 +435,7 @@ export class UserSubscriptionManager extends SubscriptionManager {
     return invoice;
   }
 
-  async saveLifetimeSubscription(
-    knownInvoice: KnownStripeInvoice
-  ): Promise<Subscription> {
+  async saveLifetimeSubscription(knownInvoice: KnownStripeInvoice) {
     // cancel previous non-lifetime subscription
     const prevSubscription = await this.db.subscription.findUnique({
       where: {
@@ -437,10 +446,9 @@ export class UserSubscriptionManager extends SubscriptionManager {
       },
     });
 
-    let subscription: Subscription;
     if (prevSubscription) {
       if (prevSubscription.stripeSubscriptionId) {
-        subscription = await this.db.subscription.update({
+        await this.db.subscription.update({
           where: {
             id: prevSubscription.id,
           },
@@ -462,11 +470,9 @@ export class UserSubscriptionManager extends SubscriptionManager {
             prorate: true,
           }
         );
-      } else {
-        subscription = prevSubscription;
       }
     } else {
-      subscription = await this.db.subscription.create({
+      await this.db.subscription.create({
         data: {
           targetId: knownInvoice.userId,
           stripeSubscriptionId: null,
@@ -485,15 +491,36 @@ export class UserSubscriptionManager extends SubscriptionManager {
       plan: knownInvoice.lookupKey.plan,
       recurring: SubscriptionRecurring.Lifetime,
     });
-
-    return subscription;
   }
 
-  async saveOnetimePaymentSubscription(
-    knownInvoice: KnownStripeInvoice
-  ): Promise<Subscription> {
-    // TODO(@forehalo): identify whether the invoice has already been redeemed.
-    const { userId, lookupKey } = knownInvoice;
+  async saveOnetimePaymentSubscription(knownInvoice: KnownStripeInvoice) {
+    const { userId, lookupKey, stripeInvoice } = knownInvoice;
+
+    const invoice = await this.db.invoice.findUnique({
+      where: {
+        stripeInvoiceId: stripeInvoice.id,
+      },
+    });
+
+    if (!invoice) {
+      // never happens
+      throw new InternalServerError('Invoice not found');
+    }
+
+    if (invoice.onetimeSubscriptionRedeemed) {
+      return;
+    }
+
+    await this.db.invoice.update({
+      select: {
+        onetimeSubscriptionRedeemed: true,
+      },
+      where: {
+        stripeInvoiceId: stripeInvoice.id,
+      },
+      data: { onetimeSubscriptionRedeemed: true },
+    });
+
     const existingSubscription = await this.db.subscription.findUnique({
       where: {
         targetId_plan: {
