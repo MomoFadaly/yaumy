@@ -42,6 +42,12 @@ export interface AddContextDocInput {
   docId: Scalars['String']['input'];
 }
 
+export interface AddContextFileInput {
+  blobId: Scalars['String']['input'];
+  contextId: Scalars['String']['input'];
+  fileName: Scalars['String']['input'];
+}
+
 export interface AlreadyInSpaceDataType {
   __typename?: 'AlreadyInSpaceDataType';
   spaceId: Scalars['String']['output'];
@@ -74,6 +80,28 @@ export enum ContextFileStatus {
   processing = 'processing',
 }
 
+export interface ContextMatchedDocChunk {
+  __typename?: 'ContextMatchedDocChunk';
+  chunk: Scalars['SafeInt']['output'];
+  content: Scalars['String']['output'];
+  distance: Maybe<Scalars['Float']['output']>;
+  docId: Scalars['String']['output'];
+}
+
+export interface ContextMatchedFileChunk {
+  __typename?: 'ContextMatchedFileChunk';
+  chunk: Scalars['SafeInt']['output'];
+  content: Scalars['String']['output'];
+  distance: Maybe<Scalars['Float']['output']>;
+  fileId: Scalars['String']['output'];
+}
+
+export interface ContextWorkspaceEmbeddingStatus {
+  __typename?: 'ContextWorkspaceEmbeddingStatus';
+  embedded: Scalars['SafeInt']['output'];
+  total: Scalars['SafeInt']['output'];
+}
+
 export interface Copilot {
   __typename?: 'Copilot';
   /** Get the context list of a session */
@@ -104,12 +132,12 @@ export interface CopilotSessionIdsArgs {
 
 export interface CopilotContext {
   __typename?: 'CopilotContext';
+  createdAt: Scalars['SafeInt']['output'];
   /** list files in context */
   docs: Array<CopilotContextDoc>;
   /** list files in context */
   files: Array<CopilotContextFile>;
   id: Scalars['ID']['output'];
-  workspaceId: Scalars['String']['output'];
 }
 
 export interface CopilotContextDoc {
@@ -780,6 +808,8 @@ export interface Mutation {
   activateLicense: License;
   /** add a doc to context */
   addContextDoc: Array<CopilotContextListItem>;
+  /** add a file to context */
+  addContextFile: Array<CopilotContextListItem>;
   addWorkspaceFeature: Scalars['Boolean']['output'];
   approveMember: Scalars['String']['output'];
   cancelSubscription: SubscriptionType;
@@ -821,15 +851,23 @@ export interface Mutation {
   invite: Scalars['String']['output'];
   inviteBatch: Array<InviteResult>;
   leaveWorkspace: Scalars['Boolean']['output'];
+  /** remove a file from context */
+  matchContext: Array<ContextMatchedFileChunk>;
+  /** match workspace doc */
+  matchWorkspaceContext: ContextMatchedDocChunk;
   publishDoc: DocType;
   /** @deprecated use publishDoc instead */
   publishPage: DocType;
+  /** queue workspace doc embedding */
+  queueWorkspaceEmbedding: Scalars['Boolean']['output'];
   recoverDoc: Scalars['DateTime']['output'];
   releaseDeletedBlobs: Scalars['Boolean']['output'];
   /** Remove user avatar */
   removeAvatar: RemoveAvatar;
   /** remove a doc from context */
   removeContextDoc: Scalars['Boolean']['output'];
+  /** remove a file from context */
+  removeContextFile: Scalars['Boolean']['output'];
   removeWorkspaceFeature: Scalars['Boolean']['output'];
   resumeSubscription: SubscriptionType;
   revoke: Scalars['Boolean']['output'];
@@ -880,6 +918,11 @@ export interface MutationActivateLicenseArgs {
 
 export interface MutationAddContextDocArgs {
   options: AddContextDocInput;
+}
+
+export interface MutationAddContextFileArgs {
+  content: Scalars['Upload']['input'];
+  options: AddContextFileInput;
 }
 
 export interface MutationAddWorkspaceFeatureArgs {
@@ -1012,6 +1055,18 @@ export interface MutationLeaveWorkspaceArgs {
   workspaceName?: InputMaybe<Scalars['String']['input']>;
 }
 
+export interface MutationMatchContextArgs {
+  content: Scalars['String']['input'];
+  contextId: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['SafeInt']['input']>;
+}
+
+export interface MutationMatchWorkspaceContextArgs {
+  content: Scalars['String']['input'];
+  contextId: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['SafeInt']['input']>;
+}
+
 export interface MutationPublishDocArgs {
   docId: Scalars['String']['input'];
   mode?: InputMaybe<PublicDocMode>;
@@ -1021,6 +1076,11 @@ export interface MutationPublishDocArgs {
 export interface MutationPublishPageArgs {
   mode?: InputMaybe<PublicDocMode>;
   pageId: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+}
+
+export interface MutationQueueWorkspaceEmbeddingArgs {
+  docId: Array<Scalars['String']['input']>;
   workspaceId: Scalars['String']['input'];
 }
 
@@ -1036,6 +1096,10 @@ export interface MutationReleaseDeletedBlobsArgs {
 
 export interface MutationRemoveContextDocArgs {
   options: RemoveContextDocInput;
+}
+
+export interface MutationRemoveContextFileArgs {
+  options: RemoveContextFileInput;
 }
 
 export interface MutationRemoveWorkspaceFeatureArgs {
@@ -1245,6 +1309,8 @@ export interface Query {
   /** List all copilot prompts */
   listCopilotPrompts: Array<CopilotPromptType>;
   prices: Array<SubscriptionPrice>;
+  /** query workspace embedding status */
+  queryWorkspaceEmbeddingStatus: ContextWorkspaceEmbeddingStatus;
   /** server config */
   serverConfig: ServerConfigType;
   /** get all server runtime configurable settings */
@@ -1285,6 +1351,10 @@ export interface QueryIsOwnerArgs {
 }
 
 export interface QueryListBlobsArgs {
+  workspaceId: Scalars['String']['input'];
+}
+
+export interface QueryQueryWorkspaceEmbeddingStatusArgs {
   workspaceId: Scalars['String']['input'];
 }
 
@@ -1340,6 +1410,11 @@ export interface RemoveAvatar {
 export interface RemoveContextDocInput {
   contextId: Scalars['String']['input'];
   docId: Scalars['String']['input'];
+}
+
+export interface RemoveContextFileInput {
+  contextId: Scalars['String']['input'];
+  fileId: Scalars['String']['input'];
 }
 
 export interface RevokeDocUserRoleInput {
@@ -2003,6 +2078,83 @@ export type RemoveContextDocMutation = {
   removeContextDoc: boolean;
 };
 
+export type AddContextFileMutationVariables = Exact<{
+  content: Scalars['Upload']['input'];
+  options: AddContextFileInput;
+}>;
+
+export type AddContextFileMutation = {
+  __typename?: 'Mutation';
+  addContextFile: Array<{
+    __typename?: 'CopilotContextListItem';
+    id: string;
+    createdAt: number;
+    name: string | null;
+    chunkSize: number | null;
+    status: ContextFileStatus | null;
+    blobId: string | null;
+  }>;
+};
+
+export type ListContextFilesQueryVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  sessionId: Scalars['String']['input'];
+  contextId: Scalars['String']['input'];
+}>;
+
+export type ListContextFilesQuery = {
+  __typename?: 'Query';
+  currentUser: {
+    __typename?: 'UserType';
+    copilot: {
+      __typename?: 'Copilot';
+      contexts: Array<{
+        __typename?: 'CopilotContext';
+        docs: Array<{
+          __typename?: 'CopilotContextDoc';
+          id: string;
+          createdAt: number;
+        }>;
+        files: Array<{
+          __typename?: 'CopilotContextFile';
+          id: string;
+          name: string;
+          blobId: string;
+          chunkSize: number;
+          status: ContextFileStatus;
+          createdAt: number;
+        }>;
+      }>;
+    };
+  } | null;
+};
+
+export type MatchContextMutationVariables = Exact<{
+  contextId: Scalars['String']['input'];
+  content: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['SafeInt']['input']>;
+}>;
+
+export type MatchContextMutation = {
+  __typename?: 'Mutation';
+  matchContext: Array<{
+    __typename?: 'ContextMatchedFileChunk';
+    fileId: string;
+    chunk: number;
+    content: string;
+    distance: number | null;
+  }>;
+};
+
+export type RemoveContextFileMutationVariables = Exact<{
+  options: RemoveContextFileInput;
+}>;
+
+export type RemoveContextFileMutation = {
+  __typename?: 'Mutation';
+  removeContextFile: boolean;
+};
+
 export type ListContextDocsAndFilesQueryVariables = Exact<{
   workspaceId: Scalars['String']['input'];
   sessionId: Scalars['String']['input'];
@@ -2047,9 +2199,53 @@ export type ListContextQuery = {
     __typename?: 'UserType';
     copilot: {
       __typename?: 'Copilot';
-      contexts: Array<{ __typename?: 'CopilotContext'; id: string }>;
+      contexts: Array<{
+        __typename?: 'CopilotContext';
+        id: string;
+        createdAt: number;
+      }>;
     };
   } | null;
+};
+
+export type MatchWorkspaceContextMutationVariables = Exact<{
+  contextId: Scalars['String']['input'];
+  content: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['SafeInt']['input']>;
+}>;
+
+export type MatchWorkspaceContextMutation = {
+  __typename?: 'Mutation';
+  matchWorkspaceContext: {
+    __typename?: 'ContextMatchedDocChunk';
+    docId: string;
+    chunk: number;
+    content: string;
+    distance: number | null;
+  };
+};
+
+export type GetWorkspaceEmbeddingStatusQueryVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+}>;
+
+export type GetWorkspaceEmbeddingStatusQuery = {
+  __typename?: 'Query';
+  queryWorkspaceEmbeddingStatus: {
+    __typename?: 'ContextWorkspaceEmbeddingStatus';
+    total: number;
+    embedded: number;
+  };
+};
+
+export type QueueWorkspaceEmbeddingMutationVariables = Exact<{
+  workspaceId: Scalars['String']['input'];
+  docId: Array<Scalars['String']['input']> | Scalars['String']['input'];
+}>;
+
+export type QueueWorkspaceEmbeddingMutation = {
+  __typename?: 'Mutation';
+  queueWorkspaceEmbedding: boolean;
 };
 
 export type GetCopilotHistoryIdsQueryVariables = Exact<{
@@ -3433,6 +3629,11 @@ export type Queries =
       response: ListBlobsQuery;
     }
   | {
+      name: 'listContextFilesQuery';
+      variables: ListContextFilesQueryVariables;
+      response: ListContextFilesQuery;
+    }
+  | {
       name: 'listContextDocsAndFilesQuery';
       variables: ListContextDocsAndFilesQueryVariables;
       response: ListContextDocsAndFilesQuery;
@@ -3441,6 +3642,11 @@ export type Queries =
       name: 'listContextQuery';
       variables: ListContextQueryVariables;
       response: ListContextQuery;
+    }
+  | {
+      name: 'getWorkspaceEmbeddingStatusQuery';
+      variables: GetWorkspaceEmbeddingStatusQueryVariables;
+      response: GetWorkspaceEmbeddingStatusQuery;
     }
   | {
       name: 'getCopilotHistoryIdsQuery';
@@ -3713,6 +3919,31 @@ export type Mutations =
       name: 'removeContextDocMutation';
       variables: RemoveContextDocMutationVariables;
       response: RemoveContextDocMutation;
+    }
+  | {
+      name: 'addContextFileMutation';
+      variables: AddContextFileMutationVariables;
+      response: AddContextFileMutation;
+    }
+  | {
+      name: 'matchContextMutation';
+      variables: MatchContextMutationVariables;
+      response: MatchContextMutation;
+    }
+  | {
+      name: 'removeContextFileMutation';
+      variables: RemoveContextFileMutationVariables;
+      response: RemoveContextFileMutation;
+    }
+  | {
+      name: 'matchWorkspaceContextMutation';
+      variables: MatchWorkspaceContextMutationVariables;
+      response: MatchWorkspaceContextMutation;
+    }
+  | {
+      name: 'queueWorkspaceEmbeddingMutation';
+      variables: QueueWorkspaceEmbeddingMutationVariables;
+      response: QueueWorkspaceEmbeddingMutation;
     }
   | {
       name: 'createCopilotMessageMutation';
