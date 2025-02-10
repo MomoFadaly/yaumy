@@ -12,7 +12,7 @@ import {
 import { BaseModel } from './base';
 import type { Workspace } from './workspace';
 
-const publicUserSelect = {
+export const publicUserSelect = {
   id: true,
   name: true,
   email: true,

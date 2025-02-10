@@ -316,7 +316,7 @@ type EditorType {
   name: String!
 }
 
-union ErrorDataUnion = AlreadyInSpaceDataType | BlobNotFoundDataType | CopilotContextFileNotSupportedDataType | CopilotDocNotFoundDataType | CopilotFailedToMatchContextDataType | CopilotFailedToModifyContextDataType | CopilotInvalidContextDataType | CopilotMessageNotFoundDataType | CopilotPromptNotFoundDataType | CopilotProviderSideErrorDataType | DocActionDeniedDataType | DocHistoryNotFoundDataType | DocNotFoundDataType | ExpectToGrantDocUserRolesDataType | ExpectToRevokeDocUserRolesDataType | ExpectToUpdateDocUserRoleDataType | GraphqlBadRequestDataType | InvalidEmailDataType | InvalidHistoryTimestampDataType | InvalidLicenseUpdateParamsDataType | InvalidPasswordLengthDataType | InvalidRuntimeConfigTypeDataType | MemberNotFoundInSpaceDataType | MissingOauthQueryParameterDataType | NotInSpaceDataType | QueryTooLongDataType | RuntimeConfigNotFoundDataType | SameSubscriptionRecurringDataType | SpaceAccessDeniedDataType | SpaceNotFoundDataType | SpaceOwnerNotFoundDataType | SpaceShouldHaveOnlyOneOwnerDataType | SubscriptionAlreadyExistsDataType | SubscriptionNotExistsDataType | SubscriptionPlanNotFoundDataType | UnknownOauthProviderDataType | UnsupportedClientVersionDataType | UnsupportedSubscriptionPlanDataType | VersionRejectedDataType | WorkspaceMembersExceedLimitToDowngradeDataType | WorkspacePermissionNotFoundDataType | WrongSignInCredentialsDataType
+union ErrorDataUnion = AlreadyInSpaceDataType | BlobNotFoundDataType | CopilotContextFileNotSupportedDataType | CopilotDocNotFoundDataType | CopilotFailedToMatchContextDataType | CopilotFailedToModifyContextDataType | CopilotInvalidContextDataType | CopilotMessageNotFoundDataType | CopilotPromptNotFoundDataType | CopilotProviderSideErrorDataType | DocActionDeniedDataType | DocHistoryNotFoundDataType | DocNotFoundDataType | ExpectToGrantDocUserRolesDataType | ExpectToRevokeDocUserRolesDataType | ExpectToUpdateDocUserRoleDataType | GraphqlBadRequestDataType | InvalidEmailDataType | InvalidHistoryTimestampDataType | InvalidLicenseUpdateParamsDataType | InvalidPasswordLengthDataType | InvalidRuntimeConfigTypeDataType | MemberNotFoundInSpaceDataType | MentionUserSpaceAccessDeniedDataType | MissingOauthQueryParameterDataType | NotInSpaceDataType | NotificationAccessDeniedDataType | QueryTooLongDataType | RuntimeConfigNotFoundDataType | SameSubscriptionRecurringDataType | SpaceAccessDeniedDataType | SpaceNotFoundDataType | SpaceOwnerNotFoundDataType | SpaceShouldHaveOnlyOneOwnerDataType | SubscriptionAlreadyExistsDataType | SubscriptionNotExistsDataType | SubscriptionPlanNotFoundDataType | UnknownOauthProviderDataType | UnsupportedClientVersionDataType | UnsupportedSubscriptionPlanDataType | VersionRejectedDataType | WorkspaceMembersExceedLimitToDowngradeDataType | WorkspacePermissionNotFoundDataType | WrongSignInCredentialsDataType
 
 enum ErrorNames {
   ACCESS_DENIED
@@ -384,7 +384,11 @@ enum ErrorNames {
   MAILER_SERVICE_IS_NOT_CONFIGURED
   MEMBER_NOT_FOUND_IN_SPACE
   MEMBER_QUOTA_EXCEEDED
+  MENTION_USER_ONESELF_DENIED
+  MENTION_USER_SPACE_ACCESS_DENIED
   MISSING_OAUTH_QUERY_PARAMETER
+  NOTIFICATION_ACCESS_DENIED
+  NOTIFICATION_NOT_FOUND
   NOT_FOUND
   NOT_IN_SPACE
   NO_COPILOT_PROVIDER_AVAILABLE
@@ -504,6 +508,30 @@ type InvalidRuntimeConfigTypeDataType {
   get: String!
   key: String!
   want: String!
+}
+
+type InvitationAcceptedNotificationBodyType {
+  """
+  The user who created the notification, maybe null when user is deleted or sent by system
+  """
+  createdByUser: PublicUserType
+  workspace: NotificationWorkspaceType
+}
+
+type InvitationBlockedNotificationBodyType {
+  """
+  The user who created the notification, maybe null when user is deleted or sent by system
+  """
+  createdByUser: PublicUserType
+  workspace: NotificationWorkspaceType
+}
+
+type InvitationNotificationBodyType {
+  """
+  The user who created the notification, maybe null when user is deleted or sent by system
+  """
+  createdByUser: PublicUserType
+  workspace: NotificationWorkspaceType
 }
 
 type InvitationType {
@@ -652,6 +680,28 @@ type MemberNotFoundInSpaceDataType {
   spaceId: String!
 }
 
+input MentionInput {
+  blockId: String!
+  docId: String!
+  userId: String!
+  workspaceId: String!
+}
+
+type MentionNotificationBodyType {
+  blockId: String!
+
+  """
+  The user who created the notification, maybe null when user is deleted or sent by system
+  """
+  createdByUser: PublicUserType
+  docId: String!
+  workspace: NotificationWorkspaceType
+}
+
+type MentionUserSpaceAccessDeniedDataType {
+  spaceId: String!
+}
+
 type MissingOauthQueryParameterDataType {
   name: String!
 }
@@ -715,8 +765,14 @@ type Mutation {
   invite(email: String!, permission: Permission @deprecated(reason: "never used"), sendInviteMail: Boolean, workspaceId: String!): String!
   inviteBatch(emails: [String!]!, sendInviteMail: Boolean, workspaceId: String!): [InviteResult!]!
   leaveWorkspace(sendLeaveMail: Boolean, workspaceId: String!, workspaceName: String @deprecated(reason: "no longer used")): Boolean!
+
+  """mention user in a doc"""
+  mentionUser(input: MentionInput!): Boolean!
   publishDoc(docId: String!, mode: PublicDocMode = Page, workspaceId: String!): DocType!
   publishPage(mode: PublicDocMode = Page, pageId: String!, workspaceId: String!): DocType! @deprecated(reason: "use publishDoc instead")
+
+  """mark notification as read"""
+  readNotification(id: String!): Boolean!
   recoverDoc(guid: String!, timestamp: DateTime!, workspaceId: String!): DateTime!
   releaseDeletedBlobs(workspaceId: String!): Boolean!
 
@@ -773,6 +829,70 @@ type NotInSpaceDataType {
   spaceId: String!
 }
 
+type NotificationAccessDeniedDataType {
+  notificationId: String!
+}
+
+"""Notification level"""
+enum NotificationLevel {
+  Default
+  High
+  Low
+  Min
+  None
+}
+
+type NotificationObjectType {
+  """Just a placeholder to export UnionNotificationBodyType, don't use it"""
+  _placeholderForUnionNotificationBodyType: UnionNotificationBodyType!
+
+  """
+  The body of the notification, different types have different fields, see UnionNotificationBodyType
+  """
+  body: JSONObject!
+
+  """The created at time of the notification"""
+  createdAt: DateTime!
+  id: ID!
+
+  """The level of the notification"""
+  level: NotificationLevel!
+
+  """Whether the notification has been read"""
+  read: Boolean!
+
+  """Whether the notification has been starred"""
+  starred: Boolean!
+
+  """The type of the notification"""
+  type: NotificationType!
+
+  """The updated at time of the notification"""
+  updatedAt: DateTime!
+}
+
+type NotificationObjectTypeEdge {
+  cursor: String!
+  node: NotificationObjectType!
+}
+
+"""Notification type"""
+enum NotificationType {
+  Invitation
+  InvitationAccepted
+  InvitationBlocked
+  Mention
+}
+
+type NotificationWorkspaceType {
+  """Base64 encoded avatar"""
+  avatar: String!
+  id: ID!
+
+  """Workspace name"""
+  name: String!
+}
+
 enum OAuthProviderType {
   GitHub
   Google
@@ -788,6 +908,12 @@ type PageInfo {
 
 type PaginatedGrantedDocUserType {
   edges: [GrantedDocUserTypeEdge!]!
+  pageInfo: PageInfo!
+  totalCount: Int!
+}
+
+type PaginatedNotificationObjectType {
+  edges: [NotificationObjectTypeEdge!]!
   pageInfo: PageInfo!
   totalCount: Int!
 }
@@ -1098,6 +1224,8 @@ enum SubscriptionVariant {
   Onetime
 }
 
+union UnionNotificationBodyType = InvitationAcceptedNotificationBodyType | InvitationBlockedNotificationBodyType | InvitationNotificationBodyType | MentionNotificationBodyType
+
 type UnknownOauthProviderDataType {
   name: String!
 }
@@ -1204,6 +1332,12 @@ type UserType {
 
   """User name"""
   name: String!
+
+  """Get user notification count"""
+  notificationCount: Int!
+
+  """Get current user notifications"""
+  notifications(pagination: PaginationInput!): PaginatedNotificationObjectType!
   quota: UserQuotaType!
   quotaUsage: UserQuotaUsageType!
   subscriptions: [SubscriptionType!]!

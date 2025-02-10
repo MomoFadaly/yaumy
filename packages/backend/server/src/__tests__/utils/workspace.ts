@@ -15,7 +15,7 @@ export async function createWorkspace(app: TestingApp): Promise<WorkspaceType> {
         name: 'createWorkspace',
         query: `mutation createWorkspace($init: Upload!) {
               createWorkspace(init: $init) {
-                id
+                id,
               }
             }`,
         variables: { init: null },

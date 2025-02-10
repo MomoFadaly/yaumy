@@ -735,4 +735,26 @@ export const USER_FRIENDLY_ERRORS = {
     message: ({ clientVersion, requiredVersion }) =>
       `Unsupported client with version [${clientVersion}], required version is [${requiredVersion}].`,
   },
+
+  // Notification Errors
+  notification_not_found: {
+    type: 'resource_not_found',
+    message: 'Notification not found.',
+  },
+  mention_user_space_access_denied: {
+    type: 'no_permission',
+    args: { spaceId: 'string' },
+    message: ({ spaceId }) =>
+      `Mention user do not have permission to access space ${spaceId}.`,
+  },
+  mention_user_oneself_denied: {
+    type: 'action_forbidden',
+    message: 'You cannot mention yourself.',
+  },
+  notification_access_denied: {
+    type: 'no_permission',
+    args: { notificationId: 'string' },
+    message: ({ notificationId }) =>
+      `You do not have permission to access notification ${notificationId}.`,
+  },
 } satisfies Record<string, UserFriendlyErrorOptions>;

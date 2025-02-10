@@ -805,6 +805,38 @@ export class UnsupportedClientVersion extends UserFriendlyError {
     super('action_forbidden', 'unsupported_client_version', message, args);
   }
 }
+
+export class NotificationNotFound extends UserFriendlyError {
+  constructor(message?: string) {
+    super('resource_not_found', 'notification_not_found', message);
+  }
+}
+@ObjectType()
+class MentionUserSpaceAccessDeniedDataType {
+  @Field() spaceId!: string
+}
+
+export class MentionUserSpaceAccessDenied extends UserFriendlyError {
+  constructor(args: MentionUserSpaceAccessDeniedDataType, message?: string | ((args: MentionUserSpaceAccessDeniedDataType) => string)) {
+    super('no_permission', 'mention_user_space_access_denied', message, args);
+  }
+}
+
+export class MentionUserOneselfDenied extends UserFriendlyError {
+  constructor(message?: string) {
+    super('action_forbidden', 'mention_user_oneself_denied', message);
+  }
+}
+@ObjectType()
+class NotificationAccessDeniedDataType {
+  @Field() notificationId!: string
+}
+
+export class NotificationAccessDenied extends UserFriendlyError {
+  constructor(args: NotificationAccessDeniedDataType, message?: string | ((args: NotificationAccessDeniedDataType) => string)) {
+    super('no_permission', 'notification_access_denied', message, args);
+  }
+}
 export enum ErrorNames {
   INTERNAL_SERVER_ERROR,
   TOO_MANY_REQUEST,
@@ -907,7 +939,11 @@ export enum ErrorNames {
   INVALID_LICENSE_TO_ACTIVATE,
   INVALID_LICENSE_UPDATE_PARAMS,
   WORKSPACE_MEMBERS_EXCEED_LIMIT_TO_DOWNGRADE,
-  UNSUPPORTED_CLIENT_VERSION
+  UNSUPPORTED_CLIENT_VERSION,
+  NOTIFICATION_NOT_FOUND,
+  MENTION_USER_SPACE_ACCESS_DENIED,
+  MENTION_USER_ONESELF_DENIED,
+  NOTIFICATION_ACCESS_DENIED
 }
 registerEnumType(ErrorNames, {
   name: 'ErrorNames'
@@ -916,5 +952,5 @@ registerEnumType(ErrorNames, {
 export const ErrorDataUnionType = createUnionType({
   name: 'ErrorDataUnion',
   types: () =>
-    [GraphqlBadRequestDataType, QueryTooLongDataType, WrongSignInCredentialsDataType, UnknownOauthProviderDataType, MissingOauthQueryParameterDataType, InvalidEmailDataType, InvalidPasswordLengthDataType, WorkspacePermissionNotFoundDataType, SpaceNotFoundDataType, MemberNotFoundInSpaceDataType, NotInSpaceDataType, AlreadyInSpaceDataType, SpaceAccessDeniedDataType, SpaceOwnerNotFoundDataType, SpaceShouldHaveOnlyOneOwnerDataType, DocNotFoundDataType, DocActionDeniedDataType, VersionRejectedDataType, InvalidHistoryTimestampDataType, DocHistoryNotFoundDataType, BlobNotFoundDataType, ExpectToGrantDocUserRolesDataType, ExpectToRevokeDocUserRolesDataType, ExpectToUpdateDocUserRoleDataType, UnsupportedSubscriptionPlanDataType, SubscriptionAlreadyExistsDataType, SubscriptionNotExistsDataType, SameSubscriptionRecurringDataType, SubscriptionPlanNotFoundDataType, CopilotDocNotFoundDataType, CopilotMessageNotFoundDataType, CopilotPromptNotFoundDataType, CopilotProviderSideErrorDataType, CopilotInvalidContextDataType, CopilotContextFileNotSupportedDataType, CopilotFailedToModifyContextDataType, CopilotFailedToMatchContextDataType, RuntimeConfigNotFoundDataType, InvalidRuntimeConfigTypeDataType, InvalidLicenseUpdateParamsDataType, WorkspaceMembersExceedLimitToDowngradeDataType, UnsupportedClientVersionDataType] as const,
+    [GraphqlBadRequestDataType, QueryTooLongDataType, WrongSignInCredentialsDataType, UnknownOauthProviderDataType, MissingOauthQueryParameterDataType, InvalidEmailDataType, InvalidPasswordLengthDataType, WorkspacePermissionNotFoundDataType, SpaceNotFoundDataType, MemberNotFoundInSpaceDataType, NotInSpaceDataType, AlreadyInSpaceDataType, SpaceAccessDeniedDataType, SpaceOwnerNotFoundDataType, SpaceShouldHaveOnlyOneOwnerDataType, DocNotFoundDataType, DocActionDeniedDataType, VersionRejectedDataType, InvalidHistoryTimestampDataType, DocHistoryNotFoundDataType, BlobNotFoundDataType, ExpectToGrantDocUserRolesDataType, ExpectToRevokeDocUserRolesDataType, ExpectToUpdateDocUserRoleDataType, UnsupportedSubscriptionPlanDataType, SubscriptionAlreadyExistsDataType, SubscriptionNotExistsDataType, SameSubscriptionRecurringDataType, SubscriptionPlanNotFoundDataType, CopilotDocNotFoundDataType, CopilotMessageNotFoundDataType, CopilotPromptNotFoundDataType, CopilotProviderSideErrorDataType, CopilotInvalidContextDataType, CopilotContextFileNotSupportedDataType, CopilotFailedToModifyContextDataType, CopilotFailedToMatchContextDataType, RuntimeConfigNotFoundDataType, InvalidRuntimeConfigTypeDataType, InvalidLicenseUpdateParamsDataType, WorkspaceMembersExceedLimitToDowngradeDataType, UnsupportedClientVersionDataType, MentionUserSpaceAccessDeniedDataType, NotificationAccessDeniedDataType] as const,
 });
