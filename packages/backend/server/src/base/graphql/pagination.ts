@@ -15,8 +15,8 @@ export class PaginationInput {
     transform: value => {
       return {
         ...value,
-        after: value.after ? decode(value.after) : null,
-        // before: value.before ? decode(value.before) : null,
+        after: decode(value.after),
+        // before: decode(value.before),
       };
     },
   };
@@ -51,9 +51,19 @@ export class PaginationInput {
   // before?: string | null;
 }
 
-const encode = (input: string) => Buffer.from(input).toString('base64');
-const decode = (base64String: string) =>
-  Buffer.from(base64String, 'base64').toString('utf-8');
+const encode = (input: unknown) => {
+  let inputStr: string;
+  if (input instanceof Date) {
+    inputStr = input.toISOString();
+  } else if (typeof input === 'string') {
+    inputStr = input;
+  } else {
+    inputStr = String(input);
+  }
+  return Buffer.from(inputStr).toString('base64');
+};
+const decode = (base64String?: string | null) =>
+  base64String ? Buffer.from(base64String, 'base64').toString('utf-8') : null;
 
 export function paginate<T>(
   list: T[],
@@ -63,7 +73,7 @@ export function paginate<T>(
 ): PaginatedType<T> {
   const edges = list.map(item => ({
     node: item,
-    cursor: encode(String(item[cursorField])),
+    cursor: encode(item[cursorField]),
   }));
 
   return {

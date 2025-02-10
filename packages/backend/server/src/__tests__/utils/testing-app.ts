@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { INestApplication, ModuleMetadata } from '@nestjs/common';
 import type { NestExpressApplication } from '@nestjs/platform-express';
 import { TestingModuleBuilder } from '@nestjs/testing';
@@ -182,12 +184,19 @@ export class TestingApp extends ApplyType<INestApplication>() {
     return res.body.data;
   }
 
-  async createUser(email: string, override?: Partial<User>): Promise<TestUser> {
+  private randomEmail() {
+    return `test-${randomUUID()}@affine.pro`;
+  }
+
+  async createUser(
+    email?: string,
+    override?: Partial<User>
+  ): Promise<TestUser> {
     const model = this.get(UserModel);
     // TODO(@forehalo): model factories
     //   TestingData.user.create()
     const user = await model.create({
-      email,
+      email: email ?? this.randomEmail(),
       password: '1',
       name: email,
       emailVerifiedAt: new Date(),
@@ -200,8 +209,8 @@ export class TestingApp extends ApplyType<INestApplication>() {
     return user as Omit<User, 'password'> & { password: string };
   }
 
-  async signup(email: string, override?: Partial<User>) {
-    const user = await this.createUser(email, override);
+  async signup(email?: string, override?: Partial<User>) {
+    const user = await this.createUser(email ?? this.randomEmail(), override);
     await this.login(user);
     return user;
   }
