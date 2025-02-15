@@ -1,3 +1,5 @@
+//starting point of the server
+
 /// <reference types="./global.d.ts" />
 import './prelude';
 
