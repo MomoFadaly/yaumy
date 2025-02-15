@@ -1,4 +1,7 @@
+version: '3.8'
+
 name: affine
+
 services:
   affine:
     image: ghcr.io/toeverything/affine-graphql:${AFFINE_REVISION:-stable}
@@ -62,8 +65,7 @@ services:
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_DATABASE:-affine}
       POSTGRES_INITDB_ARGS: '--data-checksums'
-      # you better set a password for you database
-      # or you may add 'POSTGRES_HOST_AUTH_METHOD=trust' to ignore postgres security policy
+      # Recommended: do NOT use trust in production
       POSTGRES_HOST_AUTH_METHOD: trust
     healthcheck:
       test:
