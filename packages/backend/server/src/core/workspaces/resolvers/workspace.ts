@@ -20,6 +20,7 @@ import {
   DocNotFound,
   EventBus,
   InternalServerError,
+  JobQueue,
   MemberQuotaExceeded,
   QueryTooLong,
   registerObjectType,
@@ -134,7 +135,8 @@ export class WorkspaceResolver {
     private readonly mutex: RequestMutex,
     private readonly workspaceService: WorkspaceService,
     private readonly workspaceStorage: PgWorkspaceDocStorageAdapter,
-    private readonly logger: AFFiNELogger
+    private readonly logger: AFFiNELogger,
+    private readonly queue: JobQueue
   ) {
     logger.setContext(WorkspaceResolver.name);
   }
@@ -517,6 +519,10 @@ export class WorkspaceResolver {
         target.id,
         WorkspaceRole.Collaborator
       );
+      await this.queue.add('notification.sendInvitation', {
+        inviterId: user.id,
+        inviteId,
+      });
       if (sendInviteMail) {
         try {
           await this.workspaceService.sendInviteEmail(inviteId);
