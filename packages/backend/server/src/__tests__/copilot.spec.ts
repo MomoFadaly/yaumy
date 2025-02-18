@@ -1351,7 +1351,7 @@ test('should be able to manage context', async t => {
     const [{ id: fileId }] = (await session.addFile(file, randomUUID())) || [];
     const list = session.listFiles();
     t.deepEqual(
-      list.map(f => f.chunk_size),
+      list.map(f => f.chunkSize),
       [3],
       'should split file correctly'
     );

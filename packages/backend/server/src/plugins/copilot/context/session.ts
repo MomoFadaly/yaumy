@@ -5,7 +5,13 @@ import { Readable } from 'node:stream';
 import { Prisma, PrismaClient } from '@prisma/client';
 import { nanoid } from 'nanoid';
 
-import { BlobQuotaExceeded, OneMB, PrismaTransaction } from '../../../base';
+import {
+  BlobQuotaExceeded,
+  CopilotContextFileNotSupported,
+  OneMB,
+  PrismaTransaction,
+  UserFriendlyError,
+} from '../../../base';
 import {
   ChunkSimilarity,
   ContextConfig,
@@ -106,19 +112,43 @@ export class ContextSession implements AsyncDisposable {
     blobId: string,
     signal?: AbortSignal
   ): Promise<ContextList> {
-    const buffer = await this.readStream(readable, 50 * OneMB);
-    const file = new File([buffer], name);
-    return await this.addFile(file, blobId, signal);
+    // mark the file as processing
+    const fileId = nanoid();
+    await this.saveFileRecord(fileId, file => ({
+      ...file,
+      blobId,
+      chunkSize: 0,
+      name,
+      createdAt: Date.now(),
+    }));
+
+    try {
+      const buffer = await this.readStream(readable, 50 * OneMB);
+      const file = new File([buffer], name);
+      return await this.addFile(file, fileId, signal);
+    } catch (e: any) {
+      await this.saveFileRecord(fileId, file => ({
+        ...(file as ContextFile),
+        status: ContextFileStatus.failed,
+      }));
+      if (e instanceof UserFriendlyError) {
+        throw e;
+      }
+      throw new CopilotContextFileNotSupported({
+        fileName: name,
+        message: e.message || e.toString(),
+      });
+    }
   }
 
   async addFile(
     file: File,
-    blobId: string,
+    fileId: string,
     signal?: AbortSignal
   ): Promise<ContextList> {
     const embeddings = await this.client.getFileEmbeddings(file, signal);
     if (embeddings && !signal?.aborted) {
-      await this.insertEmbeddings(file.name, blobId, embeddings);
+      await this.insertEmbeddings(fileId, embeddings);
     }
     return this.sortedList;
   }
@@ -204,20 +234,7 @@ export class ContextSession implements AsyncDisposable {
     return Prisma.join(groups.map(row => Prisma.sql`(${Prisma.join(row)})`));
   }
 
-  private async insertEmbeddings(
-    name: string,
-    blobId: string,
-    embeddings: Embedding[]
-  ) {
-    const fileId = nanoid();
-    await this.saveFileRecord(fileId, file => ({
-      ...file,
-      blobId,
-      chunk_size: embeddings.length,
-      name,
-      createdAt: Date.now(),
-    }));
-
+  private async insertEmbeddings(fileId: string, embeddings: Embedding[]) {
     const values = this.processEmbeddings(fileId, embeddings);
     return this.db.$transaction(async tx => {
       await tx.$executeRaw`
