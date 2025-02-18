@@ -295,7 +295,7 @@ export class CopilotContextResolver {
     return session.listDocs();
   }
 
-  @Mutation(() => [CopilotContextDoc], {
+  @Mutation(() => CopilotContextDoc, {
     description: 'add a doc to context',
   })
   @CallMetric('ai', 'context_doc_add')
@@ -356,7 +356,7 @@ export class CopilotContextResolver {
     return session.listFiles();
   }
 
-  @Mutation(() => [CopilotContextFile], {
+  @Mutation(() => CopilotContextFile, {
     description: 'add a file to context',
   })
   @CallMetric('ai', 'context_file_add')
