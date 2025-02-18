@@ -77,7 +77,7 @@ export abstract class EmbeddingClient {
   async getFileEmbeddings(
     file: File,
     signal?: AbortSignal
-  ): Promise<Embedding[] | undefined> {
+  ): Promise<Embedding[]> {
     const buffer = Buffer.from(await file.arrayBuffer());
     let doc;
     try {
@@ -100,7 +100,10 @@ export abstract class EmbeddingClient {
         .map(chunk => chunk.content);
       return await this.getEmbeddings(input, signal);
     }
-    return;
+    throw new CopilotContextFileNotSupported({
+      fileName: file.name,
+      message: 'failed to parse file',
+    });
   }
 
   abstract getEmbeddings(

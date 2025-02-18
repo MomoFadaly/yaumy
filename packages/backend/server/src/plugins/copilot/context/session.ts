@@ -88,12 +88,15 @@ export class ContextSession implements AsyncDisposable {
     });
   }
 
-  async addDocRecord(docId: string): Promise<ContextList> {
-    if (!this.config.docs.some(f => f.id === docId)) {
-      this.config.docs.push({ id: docId, createdAt: Date.now() });
-      await this.save();
+  async addDocRecord(docId: string): Promise<ContextDoc> {
+    const doc = this.config.docs.find(f => f.id === docId);
+    if (doc) {
+      return doc;
     }
-    return this.sortedList;
+    const record = { id: docId, createdAt: Date.now() };
+    this.config.docs.push(record);
+    await this.save();
+    return record;
   }
 
   async removeDocRecord(docId: string): Promise<boolean> {
@@ -111,7 +114,7 @@ export class ContextSession implements AsyncDisposable {
     name: string,
     blobId: string,
     signal?: AbortSignal
-  ): Promise<ContextList> {
+  ): Promise<ContextFile> {
     // mark the file as processing
     const fileId = nanoid();
     await this.saveFileRecord(fileId, file => ({
@@ -145,12 +148,10 @@ export class ContextSession implements AsyncDisposable {
     file: File,
     fileId: string,
     signal?: AbortSignal
-  ): Promise<ContextList> {
+  ): Promise<ContextFile> {
+    // no need to check if embeddings is empty, will throw internally
     const embeddings = await this.client.getFileEmbeddings(file, signal);
-    if (embeddings && !signal?.aborted) {
-      await this.insertEmbeddings(fileId, embeddings);
-    }
-    return this.sortedList;
+    return await this.insertEmbeddings(fileId, embeddings);
   }
 
   async removeFile(fileId: string): Promise<boolean> {
@@ -234,9 +235,12 @@ export class ContextSession implements AsyncDisposable {
     return Prisma.join(groups.map(row => Prisma.sql`(${Prisma.join(row)})`));
   }
 
-  private async insertEmbeddings(fileId: string, embeddings: Embedding[]) {
+  private async insertEmbeddings(
+    fileId: string,
+    embeddings: Embedding[]
+  ): Promise<ContextFile> {
     const values = this.processEmbeddings(fileId, embeddings);
-    return this.db.$transaction(async tx => {
+    await this.db.$transaction(async tx => {
       await tx.$executeRaw`
         INSERT INTO "ai_context_embeddings"
         ("id", "context_id", "file_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
@@ -251,8 +255,9 @@ export class ContextSession implements AsyncDisposable {
         }),
         tx
       );
-      return fileId;
     });
+    // should exists
+    return this.config.files.find(f => f.id === fileId) as ContextFile;
   }
 
   private async saveFileRecord(
