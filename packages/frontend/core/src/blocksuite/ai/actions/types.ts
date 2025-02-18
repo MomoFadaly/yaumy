@@ -1,5 +1,6 @@
 import type {
   ChatHistoryOrder,
+  ContextMatchedFileChunk,
   CopilotContextDoc,
   CopilotContextFile,
   getCopilotHistoriesQuery,
@@ -9,7 +10,7 @@ import type { EditorHost } from '@blocksuite/affine/block-std';
 import type { GfxModel } from '@blocksuite/affine/block-std/gfx';
 import type { BlockModel } from '@blocksuite/affine/store';
 
-import type { DocContext } from '../chat-panel/chat-context';
+import type { DocContext, FileContext } from '../chat-panel/chat-context';
 
 export const translateLangs = [
   'English',
@@ -113,7 +114,10 @@ declare global {
     interface ChatOptions extends AITextActionOptions {
       sessionId?: string;
       isRootSession?: boolean;
-      docs?: DocContext[];
+      contexts?: {
+        docs: DocContext[];
+        files: FileContext[];
+      };
     }
 
     interface TranslateOptions extends AITextActionOptions {
@@ -249,19 +253,22 @@ declare global {
       addContextDoc: (options: {
         contextId: string;
         docId: string;
-      }) => Promise<Array<{ id: string }>>;
+      }) => Promise<CopilotContextDoc>;
       removeContextDoc: (options: {
         contextId: string;
         docId: string;
       }) => Promise<boolean>;
-      addContextFile: (options: {
-        contextId: string;
-        fileId: string;
-      }) => Promise<void>;
+      addContextFile: (
+        file: File,
+        options: {
+          contextId: string;
+          blobId: string;
+        }
+      ) => Promise<CopilotContextFile>;
       removeContextFile: (options: {
         contextId: string;
         fileId: string;
-      }) => Promise<void>;
+      }) => Promise<boolean>;
       getContextDocsAndFiles: (
         workspaceId: string,
         sessionId: string,
@@ -269,6 +276,11 @@ declare global {
       ) => Promise<
         { docs: CopilotContextDoc[]; files: CopilotContextFile[] } | undefined
       >;
+      matchContext: (
+        contextId: string,
+        content: string,
+        limit?: number
+      ) => Promise<ContextMatchedFileChunk[]>;
     }
 
     // TODO(@Peng): should be refactored to get rid of implement details (like messages, action, role, etc.)

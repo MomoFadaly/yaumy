@@ -100,7 +100,7 @@ export class OpenAIProvider
     // filter redundant fields
     return messages.map(({ role, content, attachments }) => {
       content = content.trim();
-      if (Array.isArray(attachments)) {
+      if (Array.isArray(attachments) && attachments.length > 0) {
         const contents: OpenAI.Chat.Completions.ChatCompletionContentPart[] =
           [];
         if (content.length) {

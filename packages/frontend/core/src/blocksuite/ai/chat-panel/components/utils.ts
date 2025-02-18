@@ -20,7 +20,7 @@ export function getChipTooltip(
     return 'Processing...';
   }
   if (state === 'failed') {
-    return 'Failed to process';
+    return 'Failed to add to context';
   }
   return name;
 }
@@ -45,7 +45,7 @@ export function isDocChip(chip: ChatChip): chip is DocChip {
 }
 
 export function isFileChip(chip: ChatChip): chip is FileChip {
-  return 'fileId' in chip;
+  return 'file' in chip;
 }
 
 export function isDocContext(

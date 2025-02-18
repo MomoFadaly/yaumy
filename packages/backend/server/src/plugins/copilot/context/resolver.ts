@@ -67,9 +67,6 @@ class AddContextFileInput {
   contextId!: string;
 
   @Field(() => String)
-  fileName!: string;
-
-  @Field(() => String)
   blobId!: string;
 }
 

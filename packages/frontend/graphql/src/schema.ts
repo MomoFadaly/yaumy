@@ -45,7 +45,6 @@ export interface AddContextDocInput {
 export interface AddContextFileInput {
   blobId: Scalars['String']['input'];
   contextId: Scalars['String']['input'];
-  fileName: Scalars['String']['input'];
 }
 
 export interface AlreadyInSpaceDataType {
@@ -132,12 +131,12 @@ export interface CopilotSessionIdsArgs {
 
 export interface CopilotContext {
   __typename?: 'CopilotContext';
-  createdAt: Scalars['SafeInt']['output'];
   /** list files in context */
   docs: Array<CopilotContextDoc>;
   /** list files in context */
   files: Array<CopilotContextFile>;
   id: Scalars['ID']['output'];
+  workspaceId: Scalars['String']['output'];
 }
 
 export interface CopilotContextDoc {
@@ -162,14 +161,9 @@ export interface CopilotContextFileNotSupportedDataType {
   message: Scalars['String']['output'];
 }
 
-export interface CopilotContextListItem {
-  __typename?: 'CopilotContextListItem';
-  blobId: Maybe<Scalars['String']['output']>;
-  chunkSize: Maybe<Scalars['SafeInt']['output']>;
-  createdAt: Scalars['SafeInt']['output'];
-  id: Scalars['ID']['output'];
-  name: Maybe<Scalars['String']['output']>;
-  status: Maybe<ContextFileStatus>;
+export interface CopilotDocNotFoundDataType {
+  __typename?: 'CopilotDocNotFoundDataType';
+  docId: Scalars['String']['output'];
 }
 
 export interface CopilotDocNotFoundDataType {
@@ -807,9 +801,9 @@ export interface Mutation {
   acceptInviteById: Scalars['Boolean']['output'];
   activateLicense: License;
   /** add a doc to context */
-  addContextDoc: Array<CopilotContextListItem>;
+  addContextDoc: CopilotContextDoc;
   /** add a file to context */
-  addContextFile: Array<CopilotContextListItem>;
+  addContextFile: CopilotContextFile;
   addWorkspaceFeature: Scalars['Boolean']['output'];
   approveMember: Scalars['String']['output'];
   cancelSubscription: SubscriptionType;
@@ -2062,11 +2056,11 @@ export type AddContextDocMutationVariables = Exact<{
 
 export type AddContextDocMutation = {
   __typename?: 'Mutation';
-  addContextDoc: Array<{
-    __typename?: 'CopilotContextListItem';
+  addContextDoc: {
+    __typename?: 'CopilotContextDoc';
     id: string;
     createdAt: number;
-  }>;
+  };
 };
 
 export type RemoveContextDocMutationVariables = Exact<{
@@ -2085,15 +2079,15 @@ export type AddContextFileMutationVariables = Exact<{
 
 export type AddContextFileMutation = {
   __typename?: 'Mutation';
-  addContextFile: Array<{
-    __typename?: 'CopilotContextListItem';
+  addContextFile: {
+    __typename?: 'CopilotContextFile';
     id: string;
     createdAt: number;
-    name: string | null;
-    chunkSize: number | null;
-    status: ContextFileStatus | null;
-    blobId: string | null;
-  }>;
+    name: string;
+    chunkSize: number;
+    status: ContextFileStatus;
+    blobId: string;
+  };
 };
 
 export type ListContextFilesQueryVariables = Exact<{
@@ -2199,11 +2193,7 @@ export type ListContextQuery = {
     __typename?: 'UserType';
     copilot: {
       __typename?: 'Copilot';
-      contexts: Array<{
-        __typename?: 'CopilotContext';
-        id: string;
-        createdAt: number;
-      }>;
+      contexts: Array<{ __typename?: 'CopilotContext'; id: string }>;
     };
   } | null;
 };

@@ -6,6 +6,7 @@ import {
 import { showAILoginRequiredAtom } from '@affine/core/components/affine/auth/ai-login-required';
 import {
   addContextDocMutation,
+  addContextFileMutation,
   cleanupCopilotSessionMutation,
   createCopilotContextMutation,
   createCopilotMessageMutation,
@@ -18,9 +19,11 @@ import {
   type GraphQLQuery,
   listContextDocsAndFilesQuery,
   listContextQuery,
+  matchContextMutation,
   type QueryOptions,
   type QueryResponse,
   removeContextDocMutation,
+  removeContextFileMutation,
   type RequestOptions,
   updateCopilotSessionMutation,
   UserFriendlyError,
@@ -266,12 +269,30 @@ export class CopilotClient {
     return res.removeContextDoc;
   }
 
-  async addContextFile() {
-    return;
+  async addContextFile(
+    content: File,
+    options: OptionsField<typeof addContextFileMutation>
+  ) {
+    const res = await this.gql({
+      query: addContextFileMutation,
+      variables: {
+        content,
+        options,
+      },
+    });
+    return res.addContextFile;
   }
 
-  async removeContextFile() {
-    return;
+  async removeContextFile(
+    options: OptionsField<typeof removeContextFileMutation>
+  ) {
+    const res = await this.gql({
+      query: removeContextFileMutation,
+      variables: {
+        options,
+      },
+    });
+    return res.removeContextFile;
   }
 
   async getContextDocsAndFiles(
@@ -288,6 +309,18 @@ export class CopilotClient {
       },
     });
     return res.currentUser?.copilot?.contexts?.[0];
+  }
+
+  async matchContext(contextId: string, content: string, limit?: number) {
+    const res = await this.gql({
+      query: matchContextMutation,
+      variables: {
+        contextId,
+        content,
+        limit,
+      },
+    });
+    return res.matchContext;
   }
 
   async chatText({

@@ -10,7 +10,6 @@ input AddContextDocInput {
 input AddContextFileInput {
   blobId: String!
   contextId: String!
-  fileName: String!
 }
 
 type AlreadyInSpaceDataType {

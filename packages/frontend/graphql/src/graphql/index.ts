@@ -306,7 +306,6 @@ query listContext($workspaceId: String!, $sessionId: String!) {
     copilot(workspaceId: $workspaceId) {
       contexts(sessionId: $sessionId) {
         id
-        createdAt
       }
     }
   }

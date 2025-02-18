@@ -112,6 +112,7 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
           if (isFileChip(chip)) {
             return html`<chat-panel-file-chip
               .chip=${chip}
+              .removeChip=${this._removeChip}
             ></chat-panel-file-chip>`;
           }
           return null;
@@ -174,14 +175,15 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
   };
 
   private readonly _addChip = async (chip: ChatChip) => {
+    this.isCollapsed = false;
     if (
       this.chatContextValue.chips.length === 1 &&
       this.chatContextValue.chips[0].state === 'candidate'
     ) {
-      await this._addToContext(chip);
       this.updateContext({
         chips: [chip],
       });
+      await this._addToContext(chip);
       return;
     }
     // remove the chip if it already exists
@@ -189,16 +191,16 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
       if (isDocChip(chip)) {
         return !isDocChip(item) || item.docId !== chip.docId;
       } else {
-        return !isFileChip(item) || item.fileId !== chip.fileId;
+        return !isFileChip(item) || item.file !== chip.file;
       }
+    });
+    this.updateContext({
+      chips: [...chips, chip],
     });
     if (chips.length < this.chatContextValue.chips.length) {
       await this._removeFromContext(chip);
     }
     await this._addToContext(chip);
-    this.updateContext({
-      chips: [...chips, chip],
-    });
   };
 
   private readonly _updateChip = (
@@ -209,7 +211,7 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
       if (isDocChip(chip)) {
         return isDocChip(item) && item.docId === chip.docId;
       } else {
-        return isFileChip(item) && item.fileId === chip.fileId;
+        return isFileChip(item) && item.file === chip.file;
       }
     });
     const nextChip: ChatChip = {
@@ -237,7 +239,7 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
       await this._removeFromContext(chip);
       this.updateContext({
         chips: this.chatContextValue.chips.filter(item => {
-          return !isFileChip(item) || item.fileId !== chip.fileId;
+          return !isFileChip(item) || item.file !== chip.file;
         }),
       });
     }
@@ -254,10 +256,23 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
         docId: chip.docId,
       });
     } else {
-      await AIProvider.context.addContextFile({
-        contextId,
-        fileId: chip.fileId,
-      });
+      try {
+        const blobId = await this.host.doc.blobSync.set(chip.file);
+        const contextFile = await AIProvider.context.addContextFile(chip.file, {
+          contextId,
+          blobId,
+        });
+        this._updateChip(chip, {
+          state: 'success',
+          blobId: contextFile.blobId,
+          fileId: contextFile.id,
+        });
+      } catch (e) {
+        this._updateChip(chip, {
+          state: 'failed',
+          tooltip: e instanceof Error ? e.message : 'Add context file error',
+        });
+      }
     }
   };
 
@@ -271,7 +286,7 @@ export class ChatPanelChips extends WithDisposable(ShadowlessElement) {
         contextId,
         docId: chip.docId,
       });
-    } else {
+    } else if (isFileChip(chip) && chip.fileId) {
       await AIProvider.context.removeContextFile({
         contextId,
         fileId: chip.fileId,

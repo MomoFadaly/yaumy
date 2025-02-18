@@ -18,8 +18,13 @@ import { AIProvider } from '../provider';
 import { reportResponse } from '../utils/action-reporter';
 import { readBlobAsURL } from '../utils/image';
 import type { AINetworkSearchConfig } from './chat-config';
-import type { ChatContextValue, ChatMessage, DocContext } from './chat-context';
-import { isDocChip } from './components/utils';
+import type {
+  ChatContextValue,
+  ChatMessage,
+  DocContext,
+  FileContext,
+} from './chat-context';
+import { isDocChip, isFileChip } from './components/utils';
 import { PROMPT_NAME_AFFINE_AI, PROMPT_NAME_NETWORK_SEARCH } from './const';
 
 const MaximumImageCount = 32;
@@ -195,6 +200,9 @@ export class ChatPanelInput extends SignalWatcher(WithDisposable(LitElement)) {
   accessor getSessionId!: () => Promise<string | undefined>;
 
   @property({ attribute: false })
+  accessor getContextId!: () => Promise<string | undefined>;
+
+  @property({ attribute: false })
   accessor updateContext!: (context: Partial<ChatContextValue>) => void;
 
   @property({ attribute: false })
@@ -215,7 +223,7 @@ export class ChatPanelInput extends SignalWatcher(WithDisposable(LitElement)) {
   private get _isNetworkDisabled() {
     return (
       !!this.chatContextValue.images.length ||
-      !!this.chatContextValue.chips.filter(chip => chip.state !== 'candidate')
+      !!this.chatContextValue.chips.filter(chip => chip.state === 'success')
         .length
     );
   }
@@ -448,7 +456,7 @@ export class ChatPanelInput extends SignalWatcher(WithDisposable(LitElement)) {
   };
 
   send = async (text: string) => {
-    const { status, markdown, chips, images } = this.chatContextValue;
+    const { status, markdown, images } = this.chatContextValue;
     if (status === 'loading' || status === 'transmitting') return;
     if (!text) return;
 
@@ -494,17 +502,12 @@ export class ChatPanelInput extends SignalWatcher(WithDisposable(LitElement)) {
 
       const abortController = new AbortController();
       const sessionId = await this.getSessionId();
-      const docs: DocContext[] = chips
-        .filter(isDocChip)
-        .filter(chip => !!chip.markdown?.value && chip.state === 'success')
-        .map(chip => ({
-          docId: chip.docId,
-          markdown: chip.markdown?.value || '',
-        }));
+
+      const contexts = await this._getMatchedContexts(userInput);
       const stream = AIProvider.actions.chat?.({
         sessionId,
         input: userInput,
-        docs: docs,
+        contexts,
         docId: doc.id,
         attachments: images,
         workspaceId: doc.workspace.id,
@@ -546,6 +549,44 @@ export class ChatPanelInput extends SignalWatcher(WithDisposable(LitElement)) {
       this.updateContext({ abortController: null });
     }
   };
+
+  private async _getMatchedContexts(userInput: string) {
+    const contextId = await this.getContextId();
+    const matched = contextId
+      ? (await AIProvider.context?.matchContext(contextId, userInput)) || []
+      : [];
+    const contexts = this.chatContextValue.chips.reduce(
+      (acc, chip, index) => {
+        if (chip.state !== 'success') {
+          return acc;
+        }
+        if (isDocChip(chip) && !!chip.markdown?.value) {
+          acc.docs.push({
+            docId: chip.docId,
+            refIndex: index + 1,
+            markdown: chip.markdown.value,
+          });
+        }
+        if (isFileChip(chip) && chip.blobId) {
+          const matchedChunks = matched
+            .filter(chunk => chunk.fileId === chip.fileId)
+            .map(chunk => chunk.content);
+          if (matchedChunks.length > 0) {
+            acc.files.push({
+              blobId: chip.blobId,
+              refIndex: index + 1,
+              fileName: chip.file.name,
+              fileType: chip.file.type,
+              chunks: matchedChunks.join('\n'),
+            });
+          }
+        }
+        return acc;
+      },
+      { docs: [], files: [] } as { docs: DocContext[]; files: FileContext[] }
+    );
+    return contexts;
+  }
 }
 
 declare global {

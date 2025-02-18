@@ -137,6 +137,7 @@ export class ChatSession implements AsyncDisposable {
   finish(params: PromptParams): PromptMessage[] {
     const messages = this.takeMessages();
     const firstMessage = messages.at(0);
+    // TODO: refactor this {{content}} keyword agreement
     // if the message in prompt config contains {{content}},
     // we should combine it with the user message in the prompt
     if (

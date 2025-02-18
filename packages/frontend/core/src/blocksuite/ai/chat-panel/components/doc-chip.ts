@@ -128,7 +128,7 @@ export class ChatPanelDocChip extends SignalWatcher(
     } catch (e) {
       this.updateChip(this.chip, {
         state: 'failed',
-        tooltip: e instanceof Error ? e.message : 'Failed to process document',
+        tooltip: e instanceof Error ? e.message : 'Failed to extract markdown',
       });
     }
   };

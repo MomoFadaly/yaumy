@@ -4,7 +4,7 @@ import { SignalWatcher, WithDisposable } from '@blocksuite/affine/global/utils';
 import { html } from 'lit';
 import { property } from 'lit/decorators.js';
 
-import type { FileChip } from '../chat-context';
+import type { ChatChip, FileChip } from '../chat-context';
 import { getChipIcon, getChipTooltip } from './utils';
 
 export class ChatPanelFileChip extends SignalWatcher(
@@ -13,19 +13,28 @@ export class ChatPanelFileChip extends SignalWatcher(
   @property({ attribute: false })
   accessor chip!: FileChip;
 
+  @property({ attribute: false })
+  accessor removeChip!: (chip: ChatChip) => void;
+
   override render() {
-    const { state, fileName, fileType } = this.chip;
+    const { state, file } = this.chip;
     const isLoading = state === 'processing';
-    const tooltip = getChipTooltip(state, fileName, this.chip.tooltip);
+    const tooltip = getChipTooltip(state, file.name, this.chip.tooltip);
+    const fileType = file.name.split('.').pop() ?? '';
     const fileIcon = getAttachmentFileIcon(fileType);
     const icon = getChipIcon(state, fileIcon);
 
     return html`<chat-panel-chip
       .state=${state}
-      .name=${fileName}
+      .name=${file.name}
       .tooltip=${tooltip}
       .icon=${icon}
       .closeable=${!isLoading}
+      .onChipDelete=${this.onChipDelete}
     ></chat-panel-chip>`;
   }
+
+  private readonly onChipDelete = () => {
+    this.removeChip(this.chip);
+  };
 }
