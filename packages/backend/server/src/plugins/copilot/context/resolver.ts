@@ -473,7 +473,7 @@ export class CopilotContextResolver {
     await this.permissions.checkCloudWorkspace(session.workspaceId, user.id);
 
     try {
-      return await session.matchFileChunks(
+      return await session.matchWorkspaceChunks(
         content,
         limit,
         this.getSignal(ctx.req)

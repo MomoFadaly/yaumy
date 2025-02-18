@@ -188,6 +188,7 @@ export class ContextSession implements AsyncDisposable {
     >`
       SELECT "file_id" as "fileId", "chunk", "content", "embedding" <=> ${embedding}::vector as "distance" 
       FROM "ai_context_embeddings"
+      WHERE context_id = ${this.id}
       ORDER BY "distance" ASC
       LIMIT ${topK};
     `;
