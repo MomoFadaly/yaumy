@@ -124,27 +124,6 @@ class CopilotContextFile implements ContextFile {
 }
 
 @ObjectType()
-class CopilotContextListItem {
-  @Field(() => ID)
-  id!: string;
-
-  @Field(() => SafeIntResolver)
-  createdAt!: number;
-
-  @Field(() => String, { nullable: true })
-  name!: string;
-
-  @Field(() => SafeIntResolver, { nullable: true })
-  chunkSize!: number;
-
-  @Field(() => ContextFileStatus, { nullable: true })
-  status!: ContextFileStatus;
-
-  @Field(() => String, { nullable: true })
-  blobId!: string;
-}
-
-@ObjectType()
 class ContextMatchedFileChunk implements FileChunkSimilarity {
   @Field(() => String)
   fileId!: string;
@@ -316,7 +295,7 @@ export class CopilotContextResolver {
     return session.listDocs();
   }
 
-  @Mutation(() => [CopilotContextListItem], {
+  @Mutation(() => [CopilotContextDoc], {
     description: 'add a doc to context',
   })
   @CallMetric('ai', 'context_doc_add')
@@ -377,7 +356,7 @@ export class CopilotContextResolver {
     return session.listFiles();
   }
 
-  @Mutation(() => [CopilotContextListItem], {
+  @Mutation(() => [CopilotContextFile], {
     description: 'add a file to context',
   })
   @CallMetric('ai', 'context_file_add')

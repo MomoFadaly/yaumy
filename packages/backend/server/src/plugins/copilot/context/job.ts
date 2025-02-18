@@ -1,5 +1,4 @@
 import { Injectable, Optional } from '@nestjs/common';
-import { OnEvent } from '@nestjs/event-emitter';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { Prisma, PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
@@ -10,6 +9,7 @@ import {
   CallMetric,
   Config,
   metrics,
+  OnEvent,
 } from '../../../base';
 import { DocContentService } from '../../../core/doc-renderer';
 import { OpenAIEmbeddingClient } from './embedding';
@@ -111,30 +111,29 @@ export class CopilotContextDocJob {
       const { workspaceId, docId } = randomDoc;
       const content = await this.doc.getPageContent(workspaceId, docId);
       if (content) {
+        // no need to check if embeddings is empty, will throw internally
         const embeddings = await this.embeddingClient.getFileEmbeddings(
           new File([content.summary], `${content.title}.md`)
         );
-        if (embeddings) {
-          const groups = embeddings.map(e => [
-            workspaceId,
-            docId,
-            e.index,
-            e.content,
-            Prisma.raw(`'[${e.embedding.join(',')}]'`),
-            new Date(),
-          ]);
-          const values = Prisma.join(
-            groups.map(row => Prisma.sql`(${Prisma.join(row)})`)
-          );
-          await this.db.$executeRaw`
+        const groups = embeddings.map(e => [
+          workspaceId,
+          docId,
+          e.index,
+          e.content,
+          Prisma.raw(`'[${e.embedding.join(',')}]'`),
+          new Date(),
+        ]);
+        const values = Prisma.join(
+          groups.map(row => Prisma.sql`(${Prisma.join(row)})`)
+        );
+        await this.db.$executeRaw`
             INSERT INTO "ai_workspace_embeddings"
             ("workspace_id", "doc_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
             ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
             embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
           `;
-        }
       }
-    } catch (e) {
+    } catch (e: any) {
       metrics.doc.counter('auto_embed_pending_docs_error').add(1);
       this.logger.error('Failed to embed pending doc', randomDoc || '', e);
     }
