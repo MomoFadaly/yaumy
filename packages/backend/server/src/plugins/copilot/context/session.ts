@@ -116,14 +116,24 @@ export class ContextSession implements AsyncDisposable {
     signal?: AbortSignal
   ): Promise<ContextFile> {
     // mark the file as processing
-    const fileId = nanoid();
-    await this.saveFileRecord(fileId, file => ({
-      ...file,
-      blobId,
-      chunkSize: 0,
-      name,
-      createdAt: Date.now(),
-    }));
+    let fileId = nanoid();
+    const existsBlob = this.config.files.find(f => f.blobId === blobId);
+    if (existsBlob) {
+      // use exists file id if the blob exists
+      // we assume that the file content pointed to by the same blobId is consistent.
+      if (existsBlob.status === ContextFileStatus.finished) {
+        return existsBlob;
+      }
+      fileId = existsBlob.id;
+    } else {
+      await this.saveFileRecord(fileId, file => ({
+        ...file,
+        blobId,
+        chunkSize: 0,
+        name,
+        createdAt: Date.now(),
+      }));
+    }
 
     try {
       const buffer = await this.readStream(readable, 50 * OneMB);
