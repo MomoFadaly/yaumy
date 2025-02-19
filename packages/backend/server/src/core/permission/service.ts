@@ -529,26 +529,6 @@ export class PermissionService {
       }
     }
 
-    if (user) {
-      const count = await this.prisma.workspacePageUserPermission.count({
-        where: {
-          workspaceId: ws,
-          pageId: page,
-          userId: user,
-          accepted: true,
-          type: {
-            gte: permission,
-          },
-        },
-      });
-
-      // page shared to user
-      // accessible
-      if (count > 0) {
-        return true;
-      }
-    }
-
     // check whether user has workspace related permission
     return this.tryCheckWorkspace(ws, user, permission);
   }
