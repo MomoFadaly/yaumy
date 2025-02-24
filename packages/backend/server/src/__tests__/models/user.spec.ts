@@ -297,6 +297,14 @@ test('should paginate users', async t => {
   );
 });
 
+test('should check if user exists', async t => {
+  const user = await t.context.user.create({
+    email: 'test@affine.pro',
+  });
+  t.true(await t.context.user.exists(user.id));
+  t.false(await t.context.user.exists('non-existing-user'));
+});
+
 // #region ConnectedAccount
 
 test('should create, get, update, delete connected account', async t => {

@@ -61,6 +61,13 @@ export class UserModel extends BaseModel {
     });
   }
 
+  async exists(id: string) {
+    const count = await this.db.user.count({
+      where: { id },
+    });
+    return count > 0;
+  }
+
   async getPublicUser(id: string): Promise<PublicUser | null> {
     return this.db.user.findUnique({
       select: publicUserSelect,

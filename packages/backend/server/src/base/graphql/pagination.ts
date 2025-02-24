@@ -102,7 +102,7 @@ export class PageInfo {
   hasPreviousPage!: boolean;
 }
 
-export function Paginated<T>(classRef: Type<T>): any {
+export function Paginated<T>(classRef: Type<T>) {
   @ObjectType(`${classRef.name}Edge`)
   abstract class EdgeType {
     @Field(() => String)

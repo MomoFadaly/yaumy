@@ -498,22 +498,14 @@ export class DocResolver {
       ]);
     });
 
-    const users = new Map<string, PublicUserType>(
-      await Promise.all(
-        permissions.map(
-          async p =>
-            [p.userId, await this.models.user.getPublicUser(p.userId)] as [
-              string,
-              PublicUserType,
-            ]
-        )
-      )
+    const publicUsers = await this.models.user.getPublicUsers(
+      permissions.map(p => p.userId)
     );
-
+    const publicUsersMap = new Map(publicUsers.map(pu => [pu.id, pu]));
     return paginate(
       permissions.map(p => ({
         ...p,
-        user: users.get(p.userId),
+        user: publicUsersMap.get(p.userId) as PublicUserType,
       })),
       'createdAt',
       pagination,
