@@ -61,6 +61,13 @@ export class UserModel extends BaseModel {
     });
   }
 
+  async exists(id: string) {
+    const count = await this.db.user.count({
+      where: { id },
+    });
+    return count > 0;
+  }
+
   async getPublicUser(id: string): Promise<PublicUser | null> {
     return this.db.user.findUnique({
       select: publicUserSelect,
@@ -73,6 +80,29 @@ export class UserModel extends BaseModel {
       select: publicUserSelect,
       where: { id: { in: ids } },
     });
+  }
+
+  /**
+   * Fill the public user information to the given datas with the given user field name
+   *
+   * @example
+   * ```ts
+   * const docsWithUser = await this.models.user.fillPublicUsers(docs, 'createdBy', 'createdByUser');
+   * ```
+   */
+  async fillPublicUsers<T, F extends string>(
+    datas: T[],
+    userIdField: keyof T,
+    userFieldName: F
+  ): Promise<(T & { [K in F]: PublicUser | undefined })[]> {
+    const publicUsers = await this.getPublicUsers(
+      datas.map(d => d[userIdField] as string)
+    );
+    const publicUsersMap = new Map(publicUsers.map(pu => [pu.id, pu]));
+    return datas.map(data => ({
+      ...data,
+      [userFieldName]: publicUsersMap.get(data[userIdField] as string),
+    })) as (T & { [K in F]: PublicUser })[];
   }
 
   async getUserByEmail(email: string): Promise<User | null> {

@@ -297,6 +297,39 @@ test('should paginate users', async t => {
   );
 });
 
+test('should fill public users', async t => {
+  const user = await t.context.user.create({
+    email: 'test@affine.pro',
+  });
+  const user2 = await t.context.user.create({
+    email: 'test2@affine.pro',
+  });
+  const docs = await t.context.user.fillPublicUsers(
+    [
+      { createdBy: user.id },
+      { createdBy: user2.id },
+      { createdBy: 'non-existing-user' },
+    ],
+    'createdBy',
+    'createdByUser'
+  );
+  t.is(docs[0].createdByUser!.id, user.id);
+  t.is(docs[1].createdByUser!.id, user2.id);
+  t.is(docs[0].createdByUser!.email, user.email);
+  t.is(docs[1].createdByUser!.email, user2.email);
+  t.is(docs[0].createdByUser!.name, user.name);
+  t.is(docs[1].createdByUser!.name, user2.name);
+  t.is(docs[2].createdByUser, undefined);
+});
+
+test('should check if user exists', async t => {
+  const user = await t.context.user.create({
+    email: 'test@affine.pro',
+  });
+  t.true(await t.context.user.exists(user.id));
+  t.false(await t.context.user.exists('non-existing-user'));
+});
+
 // #region ConnectedAccount
 
 test('should create, get, update, delete connected account', async t => {
