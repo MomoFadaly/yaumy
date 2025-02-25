@@ -659,7 +659,9 @@ export class WorkspaceResolver {
           }
         } else {
           const inviteId = await this.permissions.grant(workspaceId, user.id);
+          let status: WorkspaceMemberStatus = WorkspaceMemberStatus.Accepted;
           if (isTeam) {
+            status = WorkspaceMemberStatus.UnderReview;
             this.event.emit('workspace.members.reviewRequested', {
               inviteId,
             });
@@ -668,9 +670,7 @@ export class WorkspaceResolver {
           return await this.permissions.acceptWorkspaceInvitation(
             inviteId,
             workspaceId,
-            isTeam
-              ? WorkspaceMemberStatus.UnderReview
-              : WorkspaceMemberStatus.Accepted
+            status
           );
         }
       }

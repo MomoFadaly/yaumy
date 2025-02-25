@@ -17,6 +17,7 @@ export class WorkspaceEvents {
   }: Events['workspace.members.reviewRequested']) {
     // send review request mail to owner and admin
     await this.workspaceService.sendReviewRequestedEmail(inviteId);
+    // send review requested notification to owner and admin
   }
 
   @OnEvent('workspace.members.requestApproved')
@@ -25,6 +26,7 @@ export class WorkspaceEvents {
   }: Events['workspace.members.requestApproved']) {
     // send approve mail
     await this.workspaceService.sendReviewApproveEmail(inviteId);
+    // send approve notification to inviter
   }
 
   @OnEvent('workspace.members.requestDeclined')
