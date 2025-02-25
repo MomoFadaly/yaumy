@@ -676,11 +676,10 @@ export class WorkspaceResolver {
       }
     }
 
-    if (sendAcceptMail) {
-      const success = await this.workspaceService.sendAcceptedEmail(inviteId);
-      if (!success) throw new UserNotFound();
-    }
-
+    await this.workspaceService.sendAcceptedNotificationAndEmail(
+      inviteId,
+      sendAcceptMail
+    );
     return await this.permissions.acceptWorkspaceInvitation(
       inviteId,
       workspaceId

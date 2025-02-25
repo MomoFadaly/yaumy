@@ -103,3 +103,48 @@ test('should create invitation notification when invite status is Pending', asyn
   t.is(spy.firstCall.args[0].body.workspaceId, workspace.id);
   t.is(spy.firstCall.args[0].body.createdByUserId, owner.id);
 });
+
+test('should create invitation accepted notification when user accepts the invitation', async t => {
+  const { notificationJob, notificationService, permissionService } = t.context;
+  const inviteId = await permissionService.grant(
+    workspace.id,
+    member.id,
+    WorkspaceRole.Collaborator,
+    WorkspaceMemberStatus.Accepted
+  );
+  const spy = Sinon.spy(notificationService, 'createInvitationAccepted');
+  await notificationJob.sendInvitationAccepted({
+    inviterId: owner.id,
+    inviteId,
+  });
+  t.is(spy.callCount, 1);
+  t.is(spy.firstCall.args[0].userId, owner.id);
+  t.is(spy.firstCall.args[0].body.workspaceId, workspace.id);
+  t.is(spy.firstCall.args[0].body.createdByUserId, member.id);
+});
+
+test('should ignore create invitation accepted notification when invite status is not Accepted', async t => {
+  const { notificationJob, notificationService, permissionService } = t.context;
+  const inviteId = await permissionService.grant(
+    workspace.id,
+    member.id,
+    WorkspaceRole.Collaborator,
+    WorkspaceMemberStatus.Pending
+  );
+  const spy = Sinon.spy(notificationService, 'createInvitationAccepted');
+  await notificationJob.sendInvitationAccepted({
+    inviterId: owner.id,
+    inviteId,
+  });
+  t.is(spy.callCount, 0);
+});
+
+test('should ignore send invitation accepted notification when inviteId not exists', async t => {
+  const { notificationJob, notificationService } = t.context;
+  const spy = Sinon.spy(notificationService, 'createInvitationAccepted');
+  await notificationJob.sendInvitationAccepted({
+    inviterId: owner.id,
+    inviteId: `not-exists-${randomUUID()}`,
+  });
+  t.is(spy.callCount, 0);
+});

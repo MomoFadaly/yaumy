@@ -4,6 +4,7 @@ import { getStreamAsBuffer } from 'get-stream';
 
 import {
   Cache,
+  JobQueue,
   MailService,
   OnEvent,
   URLHelper,
@@ -35,7 +36,8 @@ export class WorkspaceService {
     private readonly permission: PermissionService,
     private readonly prisma: PrismaClient,
     private readonly models: Models,
-    private readonly url: URLHelper
+    private readonly url: URLHelper,
+    private readonly queue: JobQueue
   ) {}
 
   async getInviteInfo(inviteId: string): Promise<InviteInfo> {
@@ -106,7 +108,7 @@ export class WorkspaceService {
     };
   }
 
-  async sendAcceptedEmail(inviteId: string) {
+  async sendAcceptedNotificationAndEmail(inviteId: string, sendEMail: boolean) {
     const { workspaceId, inviterUserId, inviteeUserId } =
       await this.getInviteInfo(inviteId);
     const workspace = await this.getWorkspaceInfo(workspaceId);
@@ -121,14 +123,19 @@ export class WorkspaceService {
       this.logger.error(
         `Inviter or invitee user not found for inviteId: ${inviteId}`
       );
-      return false;
+      throw new UserNotFound();
     }
 
-    await this.mailer.sendMemberAcceptedEmail(inviter.email, {
-      user: invitee,
-      workspace,
+    await this.queue.add('notification.sendInvitationAccepted', {
+      inviterId: inviter.id,
+      inviteId,
     });
-    return true;
+    if (sendEMail) {
+      await this.mailer.sendMemberAcceptedEmail(inviter.email, {
+        user: invitee,
+        workspace,
+      });
+    }
   }
 
   async sendInviteEmail(inviteId: string) {

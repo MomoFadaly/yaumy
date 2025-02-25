@@ -12,6 +12,10 @@ declare global {
       inviterId: string;
       inviteId: string;
     };
+    'notification.sendInvitationAccepted': {
+      inviterId: string;
+      inviteId: string;
+    };
   }
 }
 
@@ -53,6 +57,25 @@ export class NotificationJob {
       body: {
         workspaceId: invite.workspaceId,
         createdByUserId: inviterId,
+        inviteId,
+      },
+    });
+  }
+
+  @OnJob('notification.sendInvitationAccepted')
+  async sendInvitationAccepted({
+    inviterId,
+    inviteId,
+  }: Jobs['notification.sendInvitationAccepted']) {
+    const invite = await this.models.workspace.getMemberInvitation(inviteId);
+    if (!invite || invite.status !== WorkspaceMemberStatus.Accepted) {
+      return;
+    }
+    await this.service.createInvitationAccepted({
+      userId: inviterId,
+      body: {
+        workspaceId: invite.workspaceId,
+        createdByUserId: invite.userId,
         inviteId,
       },
     });
