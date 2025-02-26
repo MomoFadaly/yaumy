@@ -60,8 +60,9 @@ export function useRegisterWorkspaceCommands() {
   const appSidebarService = useService(AppSidebarService);
   const i18n = useService(I18nService).i18n;
 
-  const quitAndInstall =
-    useServiceOptional(DesktopApiService)?.handler.updater.quitAndInstall;
+  const desktopApiService = useServiceOptional(DesktopApiService);
+
+  const quitAndInstall = desktopApiService?.handler.updater.quitAndInstall;
 
   useEffect(() => {
     const unsub = registerCMDKCommand(cmdkQuickSearchService);
@@ -124,7 +125,19 @@ export function useRegisterWorkspaceCommands() {
     };
   }, [editorSettingService, store, t, theme]);
 
-  // register AffineLanguageCommands
+  useEffect(() => {
+    if (desktopApiService) {
+      return desktopApiService.events.applicationMenu.openAboutPageInSettingModal(
+        () => {
+          workspaceDialogService.open('setting', {
+            activeTab: 'about',
+          });
+        }
+      );
+    }
+    return;
+  }, [desktopApiService, workspaceDialogService]);
+
   useEffect(() => {
     const unsub = registerAffineLanguageCommands({
       i18n,
