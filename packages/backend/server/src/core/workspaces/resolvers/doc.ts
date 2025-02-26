@@ -39,7 +39,7 @@ import {
   PermissionService,
   PublicDocMode,
 } from '../../permission';
-import { PublicUserType } from '../../user';
+import { WorkspaceUserType } from '../../user';
 import { DocID } from '../../utils/doc';
 import { WorkspaceType } from '../types';
 import { DotToUnderline, mapPermissionToGraphqlPermissions } from './workspace';
@@ -126,8 +126,8 @@ class GrantedDocUserType {
   @Field(() => DocRole, { name: 'role' })
   type!: DocRole;
 
-  @Field(() => PublicUserType)
-  user!: PublicUserType;
+  @Field(() => WorkspaceUserType)
+  user!: WorkspaceUserType;
 }
 
 @ObjectType()
@@ -505,7 +505,7 @@ export class DocResolver {
     return paginate(
       permissions.map(p => ({
         ...p,
-        user: publicUsersMap.get(p.userId) as PublicUserType,
+        user: publicUsersMap.get(p.userId) as WorkspaceUserType,
       })),
       'createdAt',
       pagination,

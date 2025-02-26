@@ -9,7 +9,7 @@ import {
 } from '@nestjs/graphql';
 import { PrismaClient } from '@prisma/client';
 import GraphQLUpload from 'graphql-upload/GraphQLUpload.mjs';
-import { isNil, omitBy } from 'lodash-es';
+import { isNil, omit, omitBy } from 'lodash-es';
 
 import {
   CannotDeleteOwnAccount,
@@ -27,6 +27,7 @@ import { validators } from '../utils/validators';
 import {
   DeleteAccount,
   ManageUserInput,
+  PublicUserType,
   RemoveAvatar,
   UpdateUserInput,
   UserOrLimitedUser,
@@ -68,6 +69,20 @@ export class UserResolver {
       email: user.email,
       hasPassword: !!user.password,
     };
+  }
+
+  @Throttle('strict')
+  @Query(() => [PublicUserType], {
+    name: 'usersByIds',
+    description: 'Find users by ids',
+  })
+  @Public()
+  async findUsersByIds(
+    @Args('ids', { type: () => [String] }) ids: string[]
+  ): Promise<PublicUserType[]> {
+    return (await this.models.user.getPublicUsers(ids)).map(user =>
+      omit(user, 'email')
+    );
   }
 
   @Mutation(() => UserType, {

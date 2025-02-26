@@ -13,4 +13,4 @@ import { UserManagementResolver, UserResolver } from './resolver';
 })
 export class UserModule {}
 
-export { PublicUserType, UserType } from './types';
+export { PublicUserType, UserType, WorkspaceUserType } from './types';

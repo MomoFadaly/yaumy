@@ -481,7 +481,7 @@ input GrantDocUserRolesInput {
 
 type GrantedDocUserType {
   role: DocRole!
-  user: PublicUserType!
+  user: WorkspaceUserType!
 }
 
 type GrantedDocUserTypeEdge {
@@ -982,7 +982,6 @@ enum PublicDocMode {
 
 type PublicUserType {
   avatarUrl: String
-  email: String!
   id: String!
   name: String!
 }
@@ -1028,6 +1027,9 @@ type Query {
 
   """List registered users"""
   users(filter: ListUserInput!): [UserType!]!
+
+  """Find users by ids"""
+  usersByIds(ids: [String!]!): [PublicUserType!]!
 
   """Get users count"""
   usersCount: Int!
@@ -1527,6 +1529,13 @@ type WorkspaceType {
 
   """if workspace is team workspace"""
   team: Boolean!
+}
+
+type WorkspaceUserType {
+  avatarUrl: String
+  email: String!
+  id: String!
+  name: String!
 }
 
 type WrongSignInCredentialsDataType {

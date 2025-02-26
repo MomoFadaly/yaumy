@@ -44,7 +44,19 @@ export class UserType implements CurrentUser {
 }
 
 @ObjectType()
-export class PublicUserType implements PublicUser {
+export class PublicUserType implements Partial<PublicUser> {
+  @Field()
+  id!: string;
+
+  @Field()
+  name!: string;
+
+  @Field(() => String, { nullable: true })
+  avatarUrl!: string | null;
+}
+
+@ObjectType()
+export class WorkspaceUserType implements PublicUser {
   @Field()
   id!: string;
 
