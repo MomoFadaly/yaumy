@@ -25,11 +25,11 @@ impl Default for SplitterOptions {
 impl SplitterOptions {
   pub fn new() -> Self {
     SplitterOptions {
-      chunk_size: 512,
-      chunk_overlap: 0,
+      chunk_size: 7168,
+      chunk_overlap: 128,
       model_name: String::from("gpt-3.5-turbo"),
       encoding_name: String::from("cl100k_base"),
-      trim_chunks: false,
+      trim_chunks: true,
     }
   }
 }
@@ -63,6 +63,7 @@ impl SplitterOptions {
 
   pub fn get_tokenizer_from_str(s: &str) -> Option<Tokenizer> {
     match s.to_lowercase().as_str() {
+      "o200k_base" => Some(Tokenizer::O200kBase),
       "cl100k_base" => Some(Tokenizer::Cl100kBase),
       "p50k_base" => Some(Tokenizer::P50kBase),
       "r50k_base" => Some(Tokenizer::R50kBase),

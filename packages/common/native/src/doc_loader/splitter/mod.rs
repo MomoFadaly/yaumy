@@ -21,26 +21,26 @@ pub trait TextSplitter: Send + Sync {
 
   fn split_documents(&self, documents: &[Document]) -> Result<Vec<Document>, TextSplitterError> {
     let mut texts: Vec<String> = Vec::new();
-    let mut metadatas: Vec<HashMap<String, Value>> = Vec::new();
+    let mut metadata: Vec<HashMap<String, Value>> = Vec::new();
     documents.iter().for_each(|d| {
       texts.push(d.page_content.clone());
-      metadatas.push(d.metadata.clone());
+      metadata.push(d.metadata.clone());
     });
 
-    self.create_documents(&texts, &metadatas)
+    self.create_documents(&texts, &metadata)
   }
 
   fn create_documents(
     &self,
     text: &[String],
-    metadatas: &[HashMap<String, Value>],
+    metadata: &[HashMap<String, Value>],
   ) -> Result<Vec<Document>, TextSplitterError> {
-    let mut metadatas = metadatas.to_vec();
-    if metadatas.is_empty() {
-      metadatas = vec![HashMap::new(); text.len()];
+    let mut metadata = metadata.to_vec();
+    if metadata.is_empty() {
+      metadata = vec![HashMap::new(); text.len()];
     }
 
-    if text.len() != metadatas.len() {
+    if text.len() != metadata.len() {
       return Err(TextSplitterError::MetadataTextMismatch);
     }
 
@@ -48,7 +48,7 @@ pub trait TextSplitter: Send + Sync {
     for i in 0..text.len() {
       let chunks = self.split_text(&text[i])?;
       for chunk in chunks {
-        let document = Document::new(chunk).with_metadata(metadatas[i].clone());
+        let document = Document::new(chunk).with_metadata(metadata[i].clone());
         documents.push(document);
       }
     }

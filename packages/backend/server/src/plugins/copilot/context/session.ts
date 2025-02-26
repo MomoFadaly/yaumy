@@ -140,6 +140,7 @@ export class ContextSession implements AsyncDisposable {
       const file = new File([buffer], name);
       return await this.addFile(file, fileId, signal);
     } catch (e: any) {
+      console.error(e);
       await this.saveFileRecord(fileId, file => ({
         ...(file as ContextFile),
         status: ContextFileStatus.failed,
@@ -248,25 +249,22 @@ export class ContextSession implements AsyncDisposable {
 
   private async insertEmbeddings(
     fileId: string,
-    embeddings: Embedding[]
+    embeddings: Embedding[][]
   ): Promise<ContextFile> {
-    const values = this.processEmbeddings(fileId, embeddings);
-    await this.db.$transaction(async tx => {
-      await tx.$executeRaw`
+    for (const chunk of embeddings) {
+      const values = this.processEmbeddings(fileId, chunk);
+      await this.db.$executeRaw`
         INSERT INTO "ai_context_embeddings"
         ("id", "context_id", "file_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
         ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
         content = EXCLUDED.content, embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
       `;
-      await this.saveFileRecord(
-        fileId,
-        file => ({
-          ...(file as ContextFile),
-          status: ContextFileStatus.finished,
-        }),
-        tx
-      );
-    });
+    }
+    await this.saveFileRecord(fileId, file => ({
+      ...(file as ContextFile),
+      status: ContextFileStatus.finished,
+    }));
+
     // should exists
     return this.config.files.find(f => f.id === fileId) as ContextFile;
   }

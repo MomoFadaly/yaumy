@@ -11,7 +11,7 @@ import {
   metrics,
   OnEvent,
 } from '../../../base';
-import { DocContentService } from '../../../core/doc-renderer';
+import { DocReader } from '../../../core/doc';
 import { OpenAIEmbeddingClient } from './embedding';
 import { EmbeddingClient } from './types';
 
@@ -27,7 +27,7 @@ export class CopilotContextDocJob {
     config: Config,
     private readonly cache: Cache,
     private readonly db: PrismaClient,
-    private readonly doc: DocContentService,
+    private readonly doc: DocReader,
     private readonly logger: AFFiNELogger,
     @Optional() private readonly registry?: SchedulerRegistry
   ) {
@@ -109,29 +109,32 @@ export class CopilotContextDocJob {
       if (!randomDoc) return;
 
       const { workspaceId, docId } = randomDoc;
-      const content = await this.doc.getPageContent(workspaceId, docId);
+      const content = await this.doc.getDocContent(workspaceId, docId);
       if (content) {
         // no need to check if embeddings is empty, will throw internally
         const embeddings = await this.embeddingClient.getFileEmbeddings(
           new File([content.summary], `${content.title}.md`)
         );
-        const groups = embeddings.map(e => [
-          workspaceId,
-          docId,
-          e.index,
-          e.content,
-          Prisma.raw(`'[${e.embedding.join(',')}]'`),
-          new Date(),
-        ]);
-        const values = Prisma.join(
-          groups.map(row => Prisma.sql`(${Prisma.join(row)})`)
-        );
-        await this.db.$executeRaw`
-            INSERT INTO "ai_workspace_embeddings"
-            ("workspace_id", "doc_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
-            ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
-            embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
-          `;
+
+        for (const chunks of embeddings) {
+          const groups = chunks.map(e => [
+            workspaceId,
+            docId,
+            e.index,
+            e.content,
+            Prisma.raw(`'[${e.embedding.join(',')}]'`),
+            new Date(),
+          ]);
+          const values = Prisma.join(
+            groups.map(row => Prisma.sql`(${Prisma.join(row)})`)
+          );
+          await this.db.$executeRaw`
+              INSERT INTO "ai_workspace_embeddings"
+              ("workspace_id", "doc_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
+              ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
+              embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
+            `;
+        }
       }
     } catch (e: any) {
       metrics.doc.counter('auto_embed_pending_docs_error').add(1);
