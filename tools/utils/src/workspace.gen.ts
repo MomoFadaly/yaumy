@@ -43,6 +43,19 @@ export const PackageList = [
     ],
   },
   {
+    location: 'blocksuite/affine/block-callout',
+    name: '@blocksuite/affine-block-callout',
+    workspaceDependencies: [
+      'blocksuite/affine/components',
+      'blocksuite/affine/model',
+      'blocksuite/affine/shared',
+      'blocksuite/framework/block-std',
+      'blocksuite/framework/global',
+      'blocksuite/framework/inline',
+      'blocksuite/framework/store',
+    ],
+  },
+  {
     location: 'blocksuite/affine/block-code',
     name: '@blocksuite/affine-block-code',
     workspaceDependencies: [
@@ -816,6 +829,7 @@ export type PackageName =
   | '@blocksuite/affine'
   | '@blocksuite/affine-block-attachment'
   | '@blocksuite/affine-block-bookmark'
+  | '@blocksuite/affine-block-callout'
   | '@blocksuite/affine-block-code'
   | '@blocksuite/affine-block-data-view'
   | '@blocksuite/affine-block-database'

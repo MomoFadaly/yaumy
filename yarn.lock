@@ -3380,6 +3380,30 @@ __metadata:
   languageName: unknown
   linkType: soft
 
+"@blocksuite/affine-block-callout@workspace:*, @blocksuite/affine-block-callout@workspace:blocksuite/affine/block-callout":
+  version: 0.0.0-use.local
+  resolution: "@blocksuite/affine-block-callout@workspace:blocksuite/affine/block-callout"
+  dependencies:
+    "@blocksuite/affine-components": "workspace:*"
+    "@blocksuite/affine-model": "workspace:*"
+    "@blocksuite/affine-shared": "workspace:*"
+    "@blocksuite/block-std": "workspace:*"
+    "@blocksuite/global": "workspace:*"
+    "@blocksuite/inline": "workspace:*"
+    "@blocksuite/store": "workspace:*"
+    "@emoji-mart/data": "npm:^1.2.1"
+    "@floating-ui/dom": "npm:^1.6.10"
+    "@lit/context": "npm:^1.1.2"
+    "@preact/signals-core": "npm:^1.8.0"
+    "@toeverything/theme": "npm:^1.1.12"
+    "@types/mdast": "npm:^4.0.4"
+    emoji-mart: "npm:^5.6.0"
+    lit: "npm:^3.2.0"
+    minimatch: "npm:^10.0.1"
+    zod: "npm:^3.23.8"
+  languageName: unknown
+  linkType: soft
+
 "@blocksuite/affine-block-code@workspace:*, @blocksuite/affine-block-code@workspace:blocksuite/affine/block-code":
   version: 0.0.0-use.local
   resolution: "@blocksuite/affine-block-code@workspace:blocksuite/affine/block-code"
@@ -4079,6 +4103,7 @@ __metadata:
   dependencies:
     "@blocksuite/affine-block-attachment": "workspace:*"
     "@blocksuite/affine-block-bookmark": "workspace:*"
+    "@blocksuite/affine-block-callout": "workspace:*"
     "@blocksuite/affine-block-code": "workspace:*"
     "@blocksuite/affine-block-data-view": "workspace:*"
     "@blocksuite/affine-block-database": "workspace:*"
@@ -5343,6 +5368,13 @@ __metadata:
   languageName: node
   linkType: hard
 
+"@emoji-mart/data@npm:^1.2.1":
+  version: 1.2.1
+  resolution: "@emoji-mart/data@npm:1.2.1"
+  checksum: 10/a9f50edaf354aadfede604fb26d80055a085e9160db2c924fd5e6afc27033cd5beb0006a9ee48240ce9c543e58e1bf1cf9ed83baba5db83a395154984b30bd91
+  languageName: node
+  linkType: hard
+
 "@emotion/babel-plugin@npm:^11.13.5":
   version: 11.13.5
   resolution: "@emotion/babel-plugin@npm:11.13.5"
@@ -6332,7 +6364,7 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@floating-ui/dom@npm:^1.0.0, @floating-ui/dom@npm:^1.6.12, @floating-ui/dom@npm:^1.6.13":
+"@floating-ui/dom@npm:^1.0.0, @floating-ui/dom@npm:^1.6.10, @floating-ui/dom@npm:^1.6.12, @floating-ui/dom@npm:^1.6.13":
   version: 1.6.13
   resolution: "@floating-ui/dom@npm:1.6.13"
   dependencies:
@@ -20855,6 +20887,13 @@ __metadata:
     node-addon-api:
       optional: true
   checksum: 10/3dc832bc0e9ae6581e9057830885465fab8593114c24d1fd355bba994c58fbddb39f4ac257b75ad5d808bb969c67731de5949ca1376020c3937a5097aa8c0a48
+  languageName: node
+  linkType: hard
+
+"emoji-mart@npm:^5.6.0":
+  version: 5.6.0
+  resolution: "emoji-mart@npm:5.6.0"
+  checksum: 10/fbbd6ce6fe6bc30020a7de4bfd6375f3c00da9880a147fdbee37303d985856e5463a48a61177166ad056a355e0bd589df9c0866bd54f9c065d60a9efa80639dd
   languageName: node
   linkType: hard
 

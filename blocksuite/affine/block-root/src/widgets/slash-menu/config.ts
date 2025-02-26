@@ -61,6 +61,7 @@ import { assertType } from '@blocksuite/global/utils';
 import {
   DualLinkIcon,
   ExportToPdfIcon,
+  FontIcon,
   FrameIcon,
   GroupingIcon,
   ImageIcon,
@@ -170,6 +171,22 @@ export const defaultSlashMenuConfig: SlashMenuConfig = {
           model.doc.schema.flavourSchemaMap.has(config.flavour) &&
           !insideEdgelessText(model),
       })),
+
+    {
+      name: 'Callout',
+      description: 'Let your words stand out.',
+      icon: FontIcon(),
+      alias: ['callout'],
+      action: ({ model }) => {
+        const { doc } = model;
+        const parent = doc.getParent(model);
+        if (!parent) return;
+
+        const index = parent.children.indexOf(model);
+        if (index === -1) return;
+        doc.addBlock('affine:callout', {}, parent, index + 1);
+      },
+    },
 
     {
       name: 'Inline equation',

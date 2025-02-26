@@ -4,6 +4,7 @@ import { SurfaceBlockSchema } from '@blocksuite/affine-block-surface';
 import {
   AttachmentBlockSchema,
   BookmarkBlockSchema,
+  CalloutBlockSchema,
   CodeBlockSchema,
   DatabaseBlockSchema,
   DividerBlockSchema,
@@ -54,4 +55,5 @@ export const AffineSchemas: z.infer<typeof BlockSchema>[] = [
   EdgelessTextBlockSchema,
   LatexBlockSchema,
   TableBlockSchema,
+  CalloutBlockSchema,
 ];

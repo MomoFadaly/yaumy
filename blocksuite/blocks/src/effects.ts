@@ -1,5 +1,6 @@
 import { effects as blockAttachmentEffects } from '@blocksuite/affine-block-attachment/effects';
 import { effects as blockBookmarkEffects } from '@blocksuite/affine-block-bookmark/effects';
+import { effects as blockCalloutEffects } from '@blocksuite/affine-block-callout/effects';
 import { effects as blockCodeEffects } from '@blocksuite/affine-block-code/effects';
 import { effects as blockDataViewEffects } from '@blocksuite/affine-block-data-view/effects';
 import { effects as blockDatabaseEffects } from '@blocksuite/affine-block-database/effects';
@@ -72,6 +73,7 @@ export function effects() {
   blockCodeEffects();
   blockTableEffects();
   blockRootEffects();
+  blockCalloutEffects();
 
   componentCaptionEffects();
   componentContextMenuEffects();
