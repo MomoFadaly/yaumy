@@ -10,6 +10,7 @@ import {
   WrongSignInMethod,
 } from '../base';
 import { BaseModel } from './base';
+import { WorkspaceRole } from './common';
 import type { Workspace } from './workspace';
 
 const publicUserSelect = {
@@ -208,12 +209,14 @@ export class UserModel extends BaseModel {
   }
 
   async delete(id: string) {
-    const ownedWorkspaceIds = await this.models.workspace.findOwnedIds(id);
+    const ownedWorkspaces = await this.models.role.getUserWorkspaceRoles(id, {
+      role: WorkspaceRole.Owner,
+    });
     const user = await this.db.user.delete({ where: { id } });
 
     this.event.emit('user.deleted', {
       ...user,
-      ownedWorkspaces: ownedWorkspaceIds,
+      ownedWorkspaces: ownedWorkspaces.map(r => r.workspaceId),
     });
 
     return user;

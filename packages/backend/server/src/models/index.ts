@@ -11,6 +11,7 @@ import { DocModel } from './doc';
 import { FeatureModel } from './feature';
 import { PageModel } from './page';
 import { MODELS_SYMBOL } from './provider';
+import { RoleModel } from './role';
 import { SessionModel } from './session';
 import { UserModel } from './user';
 import { UserDocModel } from './user-doc';
@@ -30,6 +31,7 @@ const MODELS = {
   workspaceFeature: WorkspaceFeatureModel,
   doc: DocModel,
   userDoc: UserDocModel,
+  role: RoleModel,
 };
 
 type ModelsType = {
@@ -85,6 +87,7 @@ export * from './common';
 export * from './doc';
 export * from './feature';
 export * from './page';
+export * from './role';
 export * from './session';
 export * from './user';
 export * from './user-doc';

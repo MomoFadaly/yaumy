@@ -2,13 +2,13 @@ import ava, { TestFn } from 'ava';
 import Sinon from 'sinon';
 
 import { EmailAlreadyUsed, EventBus } from '../../base';
-import { WorkspaceRole } from '../../core/permission';
+import { Models } from '../../models';
 import { UserModel } from '../../models/user';
-import { WorkspaceMemberStatus } from '../../models/workspace';
 import { createTestingModule, sleep, type TestingModule } from '../utils';
 
 interface Context {
   module: TestingModule;
+  models: Models;
   user: UserModel;
 }
 
@@ -18,6 +18,7 @@ test.before(async t => {
   const module = await createTestingModule({});
 
   t.context.user = module.get(UserModel);
+  t.context.models = module.get(Models);
   t.context.module = module;
 });
 
@@ -253,24 +254,13 @@ test('should trigger user.deleted event', async t => {
 
   const user = await t.context.user.create({
     email: 'test@affine.pro',
-    workspacePermissions: {
-      create: {
-        workspace: {
-          create: {
-            id: 'test-workspace',
-            public: false,
-          },
-        },
-        type: WorkspaceRole.Owner,
-        status: WorkspaceMemberStatus.Accepted,
-      },
-    },
   });
+  const workspace = await t.context.models.workspace.create(user.id);
 
   await t.context.user.delete(user.id);
 
   t.true(
-    spy.calledOnceWithExactly({ ...user, ownedWorkspaces: ['test-workspace'] })
+    spy.calledOnceWithExactly({ ...user, ownedWorkspaces: [workspace.id] })
   );
   // await for 'user.deleted' event to be emitted and executed
   // avoid race condition cause database dead lock
