@@ -1,14 +1,7 @@
-import type {
-  SurfaceBlockComponent,
-  SurfaceBlockModel,
-} from '@blocksuite/affine-block-surface';
-import { getSurfaceBlock, Overlay } from '@blocksuite/affine-block-surface';
-import type { ConnectorElementModel } from '@blocksuite/affine-model';
-import type { GfxController, GfxModel } from '@blocksuite/block-std/gfx';
-import { BlockSuiteError, ErrorCode } from '@blocksuite/global/exceptions';
+import { Overlay } from '@blocksuite/affine-block-surface';
+import { ConnectorElementModel } from '@blocksuite/affine-model';
+import type { GfxModel } from '@blocksuite/block-std/gfx';
 import { Bound, Point } from '@blocksuite/global/utils';
-
-import { isConnectable } from '../utils/query.js';
 
 interface Distance {
   absXDistance: number;
@@ -19,12 +12,20 @@ interface Distance {
   indexY: number;
 }
 
-const ALIGN_THRESHOLD = 5;
+const ALIGN_THRESHOLD = 8;
 
-export class EdgelessSnapManager extends Overlay {
+export class SnapManager extends Overlay {
   static override overlayName: string = 'snap-manager';
 
-  private _alignableBounds: Bound[] = [];
+  private _referenceBounds: {
+    vertical: Bound[];
+    horizontal: Bound[];
+    all: Bound[];
+  } = {
+    vertical: [],
+    horizontal: [],
+    all: [],
+  };
 
   /**
    * This variable contains reference lines that are
@@ -44,28 +45,16 @@ export class EdgelessSnapManager extends Overlay {
    */
   private _intraGraphicAlignLines: [Point, Point][] = [];
 
-  cleanupAlignables = () => {
-    this._alignableBounds = [];
+  override clear() {
+    super.clear();
+
+    this._referenceBounds = {
+      vertical: [],
+      horizontal: [],
+      all: [],
+    };
     this._intraGraphicAlignLines = [];
     this._distributedAlignLines = [];
-    // FIXME: not sure why renderer can be undefined sometimes
-    this._surface.renderer?.removeOverlay(this);
-  };
-
-  private get _surface() {
-    const surfaceModel = getSurfaceBlock(this.gfx.doc);
-    if (!surfaceModel) {
-      throw new BlockSuiteError(
-        ErrorCode.ValueNotExists,
-        'Surface block not found in doc when creating snap manager'
-      );
-    }
-
-    return this.gfx.std.view.getBlock(surfaceModel.id) as SurfaceBlockComponent;
-  }
-
-  constructor(gfx: GfxController) {
-    super(gfx);
   }
 
   private _alignDistributeHorizontally(
@@ -75,7 +64,7 @@ export class EdgelessSnapManager extends Overlay {
     viewport: { zoom: number }
   ) {
     const wBoxes: Bound[] = [];
-    this._alignableBounds.forEach(box => {
+    this._referenceBounds.horizontal.forEach(box => {
       if (box.isHorizontalCross(bound)) {
         wBoxes.push(box);
       }
@@ -148,7 +137,7 @@ export class EdgelessSnapManager extends Overlay {
     viewport: { zoom: number }
   ) {
     const hBoxes: Bound[] = [];
-    this._alignableBounds.forEach(box => {
+    this._referenceBounds.vertical.forEach(box => {
       if (box.isVerticalCross(bound)) {
         hBoxes.push(box);
       }
@@ -277,10 +266,6 @@ export class EdgelessSnapManager extends Overlay {
     };
   }
 
-  private _draw() {
-    this._surface.refresh();
-  }
-
   // Update X align point
   private _updateXAlignPoint(
     rst: { dx: number; dy: number },
@@ -331,14 +316,14 @@ export class EdgelessSnapManager extends Overlay {
 
   align(bound: Bound): { dx: number; dy: number } {
     const rst = { dx: 0, dy: 0 };
-    const threshold = ALIGN_THRESHOLD;
+    const threshold = ALIGN_THRESHOLD / this.gfx.viewport.zoom;
 
     const { viewport } = this.gfx;
 
     this._intraGraphicAlignLines = [];
     this._distributedAlignLines = [];
 
-    for (const other of this._alignableBounds) {
+    for (const other of this._referenceBounds.all) {
       const closestDistances = this._calculateClosestDistances(bound, other);
 
       if (closestDistances.absXDistance < threshold) {
@@ -350,7 +335,7 @@ export class EdgelessSnapManager extends Overlay {
       }
     }
 
-    // point align prority is higher than distribute align
+    // point align priority is higher than distribute align
     if (rst.dx === 0) {
       this._alignDistributeHorizontally(rst, bound, threshold, viewport);
     }
@@ -358,7 +343,9 @@ export class EdgelessSnapManager extends Overlay {
     if (rst.dy === 0) {
       this._alignDistributeVertically(rst, bound, threshold, viewport);
     }
-    this._draw();
+
+    this._renderer?.refresh();
+
     return rst;
   }
 
@@ -413,42 +400,70 @@ export class EdgelessSnapManager extends Overlay {
     });
   }
 
-  setupAlignables(alignables: GfxModel[], exclude: GfxModel[] = []): Bound {
-    if (alignables.length === 0) return new Bound();
+  setMovingElements(
+    movingElements: GfxModel[],
+    excludes: GfxModel[] = []
+  ): Bound {
+    if (movingElements.length === 0) return new Bound();
 
-    const connectors = alignables.filter(isConnectable).reduce((prev, el) => {
-      const connectors = (this.gfx.surface as SurfaceBlockModel).getConnectors(
-        el.id
-      );
+    const skipped = new Set(movingElements);
+    excludes.forEach(e => skipped.add(e));
 
-      if (connectors.length > 0) {
-        prev = prev.concat(connectors);
-      }
-
-      return prev;
-    }, [] as ConnectorElementModel[]);
-
-    const { viewport } = this.gfx;
-    const viewportBounds = Bound.from(viewport.viewportBounds);
-    this._surface.renderer.addOverlay(this);
-    const canvasElements = this.gfx.layer.canvasElements;
-    const excludes = new Set([...alignables, ...exclude, ...connectors]);
-    this._alignableBounds = [];
-    ([...this.gfx.layer.blocks, ...canvasElements] as GfxModel[]).forEach(
-      alignable => {
-        const bounds = alignable.elementBound;
-        if (
-          viewportBounds.isOverlapWithBound(bounds) &&
-          !excludes.has(alignable)
-        ) {
-          this._alignableBounds.push(bounds);
-        }
-      }
+    const viewportBound = this.gfx.viewport.viewportBounds;
+    const movingBound = movingElements
+      .reduce(
+        (prev, element) => prev.unite(element.elementBound),
+        movingElements[0].elementBound
+      )
+      .expand(ALIGN_THRESHOLD * this.gfx.viewport.zoom);
+    const horizAreaBound = new Bound(
+      Math.min(movingBound.x, viewportBound.x),
+      movingBound.y,
+      Math.max(movingBound.w, viewportBound.w),
+      movingBound.h
+    );
+    const vertAreaBound = new Bound(
+      movingBound.x,
+      Math.min(movingBound.y, viewportBound.y),
+      movingBound.w,
+      Math.max(movingBound.h, viewportBound.h)
     );
 
-    return alignables.reduce((prev, element) => {
-      const bounds = element.elementBound;
-      return prev.unite(bounds);
-    }, Bound.deserialize(alignables[0].xywh));
+    const vertCandidates = this.gfx.grid.search(vertAreaBound, {
+      useSet: true,
+    });
+    const horizCandidates = this.gfx.grid.search(horizAreaBound, {
+      useSet: true,
+    });
+    const verticalBounds: Bound[] = [];
+    const horizBounds: Bound[] = [];
+    const allBounds: Bound[] = [];
+
+    vertCandidates.forEach(candidate => {
+      if (skipped.has(candidate) || candidate instanceof ConnectorElementModel)
+        return;
+      verticalBounds.push(candidate.elementBound);
+      allBounds.push(candidate.elementBound);
+    });
+
+    horizCandidates.forEach(candidate => {
+      if (skipped.has(candidate) || candidate instanceof ConnectorElementModel)
+        return;
+      horizBounds.push(candidate.elementBound);
+      allBounds.push(candidate.elementBound);
+    });
+
+    console.log(horizCandidates, vertCandidates);
+
+    this._referenceBounds = {
+      horizontal: horizBounds,
+      vertical: verticalBounds,
+      all: allBounds,
+    };
+
+    return movingElements.reduce(
+      (prev, element) => prev.unite(element.elementBound),
+      Bound.deserialize(movingElements[0].xywh)
+    );
   }
 }

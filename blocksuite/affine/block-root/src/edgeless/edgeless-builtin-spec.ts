@@ -21,7 +21,7 @@ import { ShapeTool } from './gfx-tool/shape-tool.js';
 import { TemplateTool } from './gfx-tool/template-tool.js';
 import { TextTool } from './gfx-tool/text-tool.js';
 import { EditPropsMiddlewareBuilder } from './middlewares/base.js';
-import { EdgelessSnapManager } from './utils/snap-manager.js';
+import { SnapManager } from './utils/snap-manager.js';
 
 export const EdgelessToolExtension: ExtensionType[] = [
   DefaultTool,
@@ -43,7 +43,7 @@ export const EdgelessBuiltInManager: ExtensionType[] = [
   ConnectionOverlay,
   FrameOverlay,
   MindMapIndicatorOverlay,
-  EdgelessSnapManager,
+  SnapManager,
   EdgelessFrameManager,
   EditPropsMiddlewareBuilder,
 ];
