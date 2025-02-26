@@ -77,7 +77,7 @@ export abstract class EmbeddingClient {
   async getFileEmbeddings(
     file: File,
     signal?: AbortSignal
-  ): Promise<Embedding[]> {
+  ): Promise<Embedding[][]> {
     const buffer = Buffer.from(await file.arrayBuffer());
     let doc;
     try {
@@ -98,7 +98,38 @@ export abstract class EmbeddingClient {
       const input = doc.chunks
         .toSorted((a, b) => a.index - b.index)
         .map(chunk => chunk.content);
-      return await this.getEmbeddings(input, signal);
+      // chunk input into 2048 every array
+      const chunks = [];
+      for (let i = 0; i < input.length; i += 2048) {
+        chunks.push(input.slice(i, i + 2048));
+      }
+
+      const chunkedEmbeddings: Embedding[][] = [];
+      for (const chunk of chunks) {
+        const retry = 3;
+
+        let embeddings: Embedding[] = [];
+        let error = null;
+        for (let i = 0; i < retry; i++) {
+          try {
+            embeddings = await this.getEmbeddings(chunk);
+            break;
+          } catch (e) {
+            error = e;
+          }
+        }
+        if (error) throw error;
+        console.log('embedding', input.length, chunk.length);
+        if (embeddings.length !== chunk.length) {
+          throw new CopilotContextFileNotSupported({
+            fileName: file.name,
+            message: 'failed to embed file content',
+          });
+        }
+        chunkedEmbeddings.push(embeddings);
+      }
+
+      return chunkedEmbeddings;
     }
     throw new CopilotContextFileNotSupported({
       fileName: file.name,
