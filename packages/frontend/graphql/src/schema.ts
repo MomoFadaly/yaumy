@@ -413,8 +413,10 @@ export type ErrorDataUnion =
   | InvalidPasswordLengthDataType
   | InvalidRuntimeConfigTypeDataType
   | MemberNotFoundInSpaceDataType
+  | MentionUserSpaceAccessDeniedDataType
   | MissingOauthQueryParameterDataType
   | NotInSpaceDataType
+  | NotificationAccessDeniedDataType
   | QueryTooLongDataType
   | RuntimeConfigNotFoundDataType
   | SameSubscriptionRecurringDataType
@@ -499,7 +501,11 @@ export enum ErrorNames {
   MAILER_SERVICE_IS_NOT_CONFIGURED = 'MAILER_SERVICE_IS_NOT_CONFIGURED',
   MEMBER_NOT_FOUND_IN_SPACE = 'MEMBER_NOT_FOUND_IN_SPACE',
   MEMBER_QUOTA_EXCEEDED = 'MEMBER_QUOTA_EXCEEDED',
+  MENTION_USER_ONESELF_DENIED = 'MENTION_USER_ONESELF_DENIED',
+  MENTION_USER_SPACE_ACCESS_DENIED = 'MENTION_USER_SPACE_ACCESS_DENIED',
   MISSING_OAUTH_QUERY_PARAMETER = 'MISSING_OAUTH_QUERY_PARAMETER',
+  NOTIFICATION_ACCESS_DENIED = 'NOTIFICATION_ACCESS_DENIED',
+  NOTIFICATION_NOT_FOUND = 'NOTIFICATION_NOT_FOUND',
   NOT_FOUND = 'NOT_FOUND',
   NOT_IN_SPACE = 'NOT_IN_SPACE',
   NO_COPILOT_PROVIDER_AVAILABLE = 'NO_COPILOT_PROVIDER_AVAILABLE',
@@ -627,6 +633,27 @@ export interface InvalidRuntimeConfigTypeDataType {
   get: Scalars['String']['output'];
   key: Scalars['String']['output'];
   want: Scalars['String']['output'];
+}
+
+export interface InvitationAcceptedNotificationBodyType {
+  __typename?: 'InvitationAcceptedNotificationBodyType';
+  /** The user who created the notification, maybe null when user is deleted or sent by system */
+  createdByUser: Maybe<PublicUserType>;
+  workspace: Maybe<NotificationWorkspaceType>;
+}
+
+export interface InvitationBlockedNotificationBodyType {
+  __typename?: 'InvitationBlockedNotificationBodyType';
+  /** The user who created the notification, maybe null when user is deleted or sent by system */
+  createdByUser: Maybe<PublicUserType>;
+  workspace: Maybe<NotificationWorkspaceType>;
+}
+
+export interface InvitationNotificationBodyType {
+  __typename?: 'InvitationNotificationBodyType';
+  /** The user who created the notification, maybe null when user is deleted or sent by system */
+  createdByUser: Maybe<PublicUserType>;
+  workspace: Maybe<NotificationWorkspaceType>;
 }
 
 export interface InvitationType {
@@ -769,6 +796,27 @@ export interface MemberNotFoundInSpaceDataType {
   spaceId: Scalars['String']['output'];
 }
 
+export interface MentionInput {
+  blockId: Scalars['String']['input'];
+  docId: Scalars['String']['input'];
+  userId: Scalars['String']['input'];
+  workspaceId: Scalars['String']['input'];
+}
+
+export interface MentionNotificationBodyType {
+  __typename?: 'MentionNotificationBodyType';
+  blockId: Scalars['String']['output'];
+  /** The user who created the notification, maybe null when user is deleted or sent by system */
+  createdByUser: Maybe<PublicUserType>;
+  docId: Scalars['String']['output'];
+  workspace: Maybe<NotificationWorkspaceType>;
+}
+
+export interface MentionUserSpaceAccessDeniedDataType {
+  __typename?: 'MentionUserSpaceAccessDeniedDataType';
+  spaceId: Scalars['String']['output'];
+}
+
 export interface MissingOauthQueryParameterDataType {
   __typename?: 'MissingOauthQueryParameterDataType';
   name: Scalars['String']['output'];
@@ -821,9 +869,13 @@ export interface Mutation {
   invite: Scalars['String']['output'];
   inviteBatch: Array<InviteResult>;
   leaveWorkspace: Scalars['Boolean']['output'];
+  /** mention user in a doc */
+  mentionUser: Scalars['Boolean']['output'];
   publishDoc: DocType;
   /** @deprecated use publishDoc instead */
   publishPage: DocType;
+  /** mark notification as read */
+  readNotification: Scalars['Boolean']['output'];
   recoverDoc: Scalars['DateTime']['output'];
   releaseDeletedBlobs: Scalars['Boolean']['output'];
   /** Remove user avatar */
@@ -1012,6 +1064,10 @@ export interface MutationLeaveWorkspaceArgs {
   workspaceName?: InputMaybe<Scalars['String']['input']>;
 }
 
+export interface MutationMentionUserArgs {
+  input: MentionInput;
+}
+
 export interface MutationPublishDocArgs {
   docId: Scalars['String']['input'];
   mode?: InputMaybe<PublicDocMode>;
@@ -1022,6 +1078,10 @@ export interface MutationPublishPageArgs {
   mode?: InputMaybe<PublicDocMode>;
   pageId: Scalars['String']['input'];
   workspaceId: Scalars['String']['input'];
+}
+
+export interface MutationReadNotificationArgs {
+  id: Scalars['String']['input'];
 }
 
 export interface MutationRecoverDocArgs {
@@ -1166,6 +1226,64 @@ export interface NotInSpaceDataType {
   spaceId: Scalars['String']['output'];
 }
 
+export interface NotificationAccessDeniedDataType {
+  __typename?: 'NotificationAccessDeniedDataType';
+  notificationId: Scalars['String']['output'];
+}
+
+/** Notification level */
+export enum NotificationLevel {
+  Default = 'Default',
+  High = 'High',
+  Low = 'Low',
+  Min = 'Min',
+  None = 'None',
+}
+
+export interface NotificationObjectType {
+  __typename?: 'NotificationObjectType';
+  /** Just a placeholder to export UnionNotificationBodyType, don't use it */
+  _placeholderForUnionNotificationBodyType: UnionNotificationBodyType;
+  /** The body of the notification, different types have different fields, see UnionNotificationBodyType */
+  body: Scalars['JSONObject']['output'];
+  /** The created at time of the notification */
+  createdAt: Scalars['DateTime']['output'];
+  id: Scalars['ID']['output'];
+  /** The level of the notification */
+  level: NotificationLevel;
+  /** Whether the notification has been read */
+  read: Scalars['Boolean']['output'];
+  /** Whether the notification has been starred */
+  starred: Scalars['Boolean']['output'];
+  /** The type of the notification */
+  type: NotificationType;
+  /** The updated at time of the notification */
+  updatedAt: Scalars['DateTime']['output'];
+}
+
+export interface NotificationObjectTypeEdge {
+  __typename?: 'NotificationObjectTypeEdge';
+  cursor: Scalars['String']['output'];
+  node: NotificationObjectType;
+}
+
+/** Notification type */
+export enum NotificationType {
+  Invitation = 'Invitation',
+  InvitationAccepted = 'InvitationAccepted',
+  InvitationBlocked = 'InvitationBlocked',
+  Mention = 'Mention',
+}
+
+export interface NotificationWorkspaceType {
+  __typename?: 'NotificationWorkspaceType';
+  /** Base64 encoded avatar */
+  avatar: Scalars['String']['output'];
+  id: Scalars['ID']['output'];
+  /** Workspace name */
+  name: Scalars['String']['output'];
+}
+
 export enum OAuthProviderType {
   GitHub = 'GitHub',
   Google = 'Google',
@@ -1183,6 +1301,13 @@ export interface PageInfo {
 export interface PaginatedGrantedDocUserType {
   __typename?: 'PaginatedGrantedDocUserType';
   edges: Array<GrantedDocUserTypeEdge>;
+  pageInfo: PageInfo;
+  totalCount: Scalars['Int']['output'];
+}
+
+export interface PaginatedNotificationObjectType {
+  __typename?: 'PaginatedNotificationObjectType';
+  edges: Array<NotificationObjectTypeEdge>;
   pageInfo: PageInfo;
   totalCount: Scalars['Int']['output'];
 }
@@ -1531,6 +1656,12 @@ export enum SubscriptionVariant {
   Onetime = 'Onetime',
 }
 
+export type UnionNotificationBodyType =
+  | InvitationAcceptedNotificationBodyType
+  | InvitationBlockedNotificationBodyType
+  | InvitationNotificationBodyType
+  | MentionNotificationBodyType;
+
 export interface UnknownOauthProviderDataType {
   __typename?: 'UnknownOauthProviderDataType';
   name: Scalars['String']['output'];
@@ -1636,6 +1767,10 @@ export interface UserType {
   invoices: Array<InvoiceType>;
   /** User name */
   name: Scalars['String']['output'];
+  /** Get user notification count */
+  notificationCount: Scalars['Int']['output'];
+  /** Get current user notifications */
+  notifications: PaginatedNotificationObjectType;
   quota: UserQuotaType;
   quotaUsage: UserQuotaUsageType;
   subscriptions: Array<SubscriptionType>;
@@ -1650,6 +1785,10 @@ export interface UserTypeCopilotArgs {
 export interface UserTypeInvoicesArgs {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
+}
+
+export interface UserTypeNotificationsArgs {
+  pagination: PaginationInput;
 }
 
 export interface VersionRejectedDataType {
@@ -2859,6 +2998,43 @@ export type LeaveWorkspaceMutation = {
   leaveWorkspace: boolean;
 };
 
+export type ListNotificationsQueryVariables = Exact<{
+  pagination: PaginationInput;
+}>;
+
+export type ListNotificationsQuery = {
+  __typename?: 'Query';
+  currentUser: {
+    __typename?: 'UserType';
+    notifications: {
+      __typename?: 'PaginatedNotificationObjectType';
+      totalCount: number;
+      edges: Array<{
+        __typename?: 'NotificationObjectTypeEdge';
+        cursor: string;
+        node: {
+          __typename?: 'NotificationObjectType';
+          id: string;
+          type: NotificationType;
+          level: NotificationLevel;
+          read: boolean;
+          starred: boolean;
+          createdAt: string;
+          updatedAt: string;
+          body: any;
+        };
+      }>;
+      pageInfo: {
+        __typename?: 'PageInfo';
+        startCursor: string | null;
+        endCursor: string | null;
+        hasNextPage: boolean;
+        hasPreviousPage: boolean;
+      };
+    };
+  } | null;
+};
+
 export type ListUsersQueryVariables = Exact<{
   filter: ListUserInput;
 }>;
@@ -2875,6 +3051,13 @@ export type ListUsersQuery = {
     emailVerified: boolean;
     avatarUrl: string | null;
   }>;
+};
+
+export type NotificationCountQueryVariables = Exact<{ [key: string]: never }>;
+
+export type NotificationCountQuery = {
+  __typename?: 'Query';
+  currentUser: { __typename?: 'UserType'; notificationCount: number } | null;
 };
 
 export type PricesQueryVariables = Exact<{ [key: string]: never }>;
@@ -2928,6 +3111,15 @@ export type QuotaQuery = {
     };
     quotaUsage: { __typename?: 'UserQuotaUsageType'; storageQuota: number };
   } | null;
+};
+
+export type ReadNotificationMutationVariables = Exact<{
+  id: Scalars['String']['input'];
+}>;
+
+export type ReadNotificationMutation = {
+  __typename?: 'Mutation';
+  readNotification: boolean;
 };
 
 export type RecoverDocMutationVariables = Exact<{
@@ -3613,9 +3805,19 @@ export type Queries =
       response: InvoicesQuery;
     }
   | {
+      name: 'listNotificationsQuery';
+      variables: ListNotificationsQueryVariables;
+      response: ListNotificationsQuery;
+    }
+  | {
       name: 'listUsersQuery';
       variables: ListUsersQueryVariables;
       response: ListUsersQuery;
+    }
+  | {
+      name: 'notificationCountQuery';
+      variables: NotificationCountQueryVariables;
+      response: NotificationCountQuery;
     }
   | {
       name: 'pricesQuery';
@@ -3808,6 +4010,11 @@ export type Mutations =
       name: 'publishPageMutation';
       variables: PublishPageMutationVariables;
       response: PublishPageMutation;
+    }
+  | {
+      name: 'readNotificationMutation';
+      variables: ReadNotificationMutationVariables;
+      response: ReadNotificationMutation;
     }
   | {
       name: 'recoverDocMutation';

@@ -1104,6 +1104,40 @@ mutation leaveWorkspace($workspaceId: String!, $sendLeaveMail: Boolean) {
 }`,
 };
 
+export const listNotificationsQuery = {
+  id: 'listNotificationsQuery' as const,
+  operationName: 'listNotifications',
+  definitionName: 'currentUser',
+  containsFile: false,
+  query: `
+query listNotifications($pagination: PaginationInput!) {
+  currentUser {
+    notifications(pagination: $pagination) {
+      totalCount
+      edges {
+        cursor
+        node {
+          id
+          type
+          level
+          read
+          starred
+          createdAt
+          updatedAt
+          body
+        }
+      }
+      pageInfo {
+        startCursor
+        endCursor
+        hasNextPage
+        hasPreviousPage
+      }
+    }
+  }
+}`,
+};
+
 export const listUsersQuery = {
   id: 'listUsersQuery' as const,
   operationName: 'listUsers',
@@ -1119,6 +1153,19 @@ query listUsers($filter: ListUserInput!) {
     hasPassword
     emailVerified
     avatarUrl
+  }
+}`,
+};
+
+export const notificationCountQuery = {
+  id: 'notificationCountQuery' as const,
+  operationName: 'notificationCount',
+  definitionName: 'currentUser',
+  containsFile: false,
+  query: `
+query notificationCount {
+  currentUser {
+    notificationCount
   }
 }`,
 };
@@ -1182,6 +1229,17 @@ query quota {
       storageQuota
     }
   }
+}`,
+};
+
+export const readNotificationMutation = {
+  id: 'readNotificationMutation' as const,
+  operationName: 'readNotification',
+  definitionName: 'readNotification',
+  containsFile: false,
+  query: `
+mutation readNotification($id: String!) {
+  readNotification(id: $id)
 }`,
 };
 

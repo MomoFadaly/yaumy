@@ -2,7 +2,6 @@ import { Scrollable } from '@affine/component';
 import type { AffineEditorContainer } from '@affine/core/blocksuite/block-suite-editor';
 import { EditorOutlineViewer } from '@affine/core/blocksuite/outline-viewer';
 import { useActiveBlocksuiteEditor } from '@affine/core/components/hooks/use-block-suite-editor';
-import { usePageDocumentTitle } from '@affine/core/components/hooks/use-global-state';
 import { useNavigateHelper } from '@affine/core/components/hooks/use-navigate-helper';
 import { PageDetailEditor } from '@affine/core/components/page-detail-editor';
 import { AppContainer } from '@affine/core/desktop/components/app-container';
@@ -191,8 +190,6 @@ const SharePageInner = ({
   const t = useI18n();
   const pageTitle = useLiveData(page?.title$);
   const { jumpToPageBlock, openPage } = useNavigateHelper();
-
-  usePageDocumentTitle(pageTitle);
 
   const onEditorLoad = useCallback(
     (editorContainer: AffineEditorContainer) => {

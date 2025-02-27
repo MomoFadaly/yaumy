@@ -44,7 +44,6 @@ import { AffineErrorBoundary } from '../../../../components/affine/affine-error-
 import { GlobalPageHistoryModal } from '../../../../components/affine/page-history-modal';
 import { useRegisterBlocksuiteEditorCommands } from '../../../../components/hooks/affine/use-register-blocksuite-editor-commands';
 import { useActiveBlocksuiteEditor } from '../../../../components/hooks/use-block-suite-editor';
-import { usePageDocumentTitle } from '../../../../components/hooks/use-global-state';
 import { PageDetailEditor } from '../../../../components/page-detail-editor';
 import { TrashPageFooter } from '../../../../components/pure/trash-page-footer';
 import { TopTip } from '../../../../components/top-tip';
@@ -162,8 +161,6 @@ const DetailPageImpl = memo(function DetailPageImpl() {
   }, [globalContext, isActiveView, isInTrash]);
 
   useRegisterBlocksuiteEditorCommands(editor, isActiveView);
-  const title = useLiveData(doc.title$);
-  usePageDocumentTitle(title);
 
   const onLoad = useCallback(
     (editorContainer: AffineEditorContainer) => {

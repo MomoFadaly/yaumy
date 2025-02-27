@@ -3,7 +3,6 @@ import { PageDetailSkeleton } from '@affine/component/page-detail-skeleton';
 import type { AffineEditorContainer } from '@affine/core/blocksuite/block-suite-editor';
 import { AffineErrorBoundary } from '@affine/core/components/affine/affine-error-boundary';
 import { useActiveBlocksuiteEditor } from '@affine/core/components/hooks/use-block-suite-editor';
-import { usePageDocumentTitle } from '@affine/core/components/hooks/use-global-state';
 import { useNavigateHelper } from '@affine/core/components/hooks/use-navigate-helper';
 import { PageDetailEditor } from '@affine/core/components/page-detail-editor';
 import { DetailPageWrapper } from '@affine/core/desktop/pages/workspace/detail-page/detail-page-wrapper';
@@ -131,9 +130,6 @@ const DetailPageImpl = () => {
       globalContext.isTrashDoc.set(null);
     };
   }, [globalContext, isInTrash]);
-
-  const title = useLiveData(doc.title$);
-  usePageDocumentTitle(title);
 
   const server = useService(ServerService).server;
 
