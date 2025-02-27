@@ -6,6 +6,7 @@ import { TableSelectionExtension } from '@blocksuite/affine-block-table';
 import {
   AttachmentBlockSchemaExtension,
   BookmarkBlockSchemaExtension,
+  CalloutBlockSchemaExtension,
   CodeBlockSchemaExtension,
   DatabaseBlockSchemaExtension,
   DividerBlockSchemaExtension,
@@ -77,6 +78,7 @@ export const StoreExtensions: ExtensionType[] = [
   EdgelessTextBlockSchemaExtension,
   LatexBlockSchemaExtension,
   TableBlockSchemaExtension,
+  CalloutBlockSchemaExtension,
 
   BlockSelectionExtension,
   TextSelectionExtension,

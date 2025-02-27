@@ -1,4 +1,9 @@
-import { BlockModel, defineBlockSchema, type Text } from '@blocksuite/store';
+import {
+  BlockModel,
+  BlockSchemaExtension,
+  defineBlockSchema,
+  type Text,
+} from '@blocksuite/store';
 
 export const CalloutBlockSchema = defineBlockSchema({
   flavour: 'affine:callout',
@@ -28,3 +33,6 @@ export type CalloutProps = {
 export class CalloutBlockModel extends BlockModel<CalloutProps> {
   override text!: Text;
 }
+
+export const CalloutBlockSchemaExtension =
+  BlockSchemaExtension(CalloutBlockSchema);
