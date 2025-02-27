@@ -193,7 +193,6 @@ test('should get workspace content with default avatar', async t => {
     user.id
   );
 
-  // @ts-expect-error parseWorkspaceContent is private
   const track = mock.method(docReader, 'parseWorkspaceContent', () => ({
     name: 'Test Workspace',
     avatarKey: '',
@@ -240,7 +239,6 @@ test('should get workspace content with custom avatar', async t => {
     Buffer.from('mock avatar image data here')
   );
 
-  // @ts-expect-error parseWorkspaceContent is private
   const track = mock.method(docReader, 'parseWorkspaceContent', () => ({
     name: 'Test Workspace',
     avatarKey,

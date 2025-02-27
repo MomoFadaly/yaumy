@@ -39,6 +39,8 @@ test.after.always(async () => {
 const snapshot: Snapshot = {
   workspaceId: '1',
   id: 'doc1',
+  title: 'test title',
+  summary: 'test summary',
   blob: Buffer.from([1, 0]),
   state: Buffer.from([0]),
   seq: 0,

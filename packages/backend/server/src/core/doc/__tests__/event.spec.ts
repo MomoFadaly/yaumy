@@ -1,0 +1,113 @@
+import { randomUUID } from 'node:crypto';
+import { mock } from 'node:test';
+
+import ava, { TestFn } from 'ava';
+import Sinon from 'sinon';
+import { Doc as YDoc } from 'yjs';
+
+import {
+  createTestingModule,
+  type TestingModule,
+} from '../../../__tests__/utils';
+import { Models, User, Workspace } from '../../../models';
+import { DocReader, PgWorkspaceDocStorageAdapter as Adapter } from '..';
+import { DocEventsListener } from '../event';
+
+interface Context {
+  module: TestingModule;
+  docReader: DocReader;
+  adapter: Adapter;
+  models: Models;
+  listener: DocEventsListener;
+}
+
+const test = ava as TestFn<Context>;
+
+test.before(async t => {
+  const module = await createTestingModule();
+  t.context.module = module;
+  t.context.models = module.get(Models);
+  t.context.docReader = module.get(DocReader);
+  t.context.adapter = module.get(Adapter);
+  t.context.listener = module.get(DocEventsListener);
+});
+
+let owner: User;
+let workspace: Workspace;
+
+test.beforeEach(async t => {
+  await t.context.module.initTestingDB();
+  owner = await t.context.models.user.create({
+    email: `${randomUUID()}@affine.pro`,
+  });
+  workspace = await t.context.models.workspace.create(owner.id);
+});
+
+test.afterEach.always(() => {
+  mock.reset();
+  Sinon.restore();
+});
+
+test.after.always(async t => {
+  await t.context.module.close();
+});
+
+test('should update doc content to database when doc is updated', async t => {
+  const { docReader, models, adapter, listener } = t.context;
+  const updates: Buffer[] = [];
+  {
+    const doc = new YDoc();
+    doc.on('update', data => {
+      updates.push(Buffer.from(data));
+    });
+
+    const text = doc.getText('content');
+    text.insert(0, 'hello');
+    text.insert(5, 'world');
+  }
+
+  const docId = randomUUID();
+  await adapter.pushDocUpdates(workspace.id, docId, updates);
+  await adapter.getDoc(workspace.id, docId);
+
+  mock.method(docReader, 'parseDocContent', () => {
+    return {
+      title: 'test title',
+      summary: 'test summary',
+    };
+  });
+
+  const spy = Sinon.spy(models.doc, 'updateContent');
+  await listener.markDocContentCacheStale({
+    workspaceId: workspace.id,
+    docId,
+  });
+  t.is(spy.callCount, 1);
+  const content = await models.doc.getContent(workspace.id, docId);
+  t.truthy(content);
+  t.is(content!.title, 'test title');
+  t.is(content!.summary, 'test summary');
+});
+
+test('should ignore update doc content to database when snapshot not exists', async t => {
+  const { models, listener } = t.context;
+  const docId = randomUUID();
+  const spy = Sinon.spy(models.doc, 'updateContent');
+  await listener.markDocContentCacheStale({
+    workspaceId: workspace.id,
+    docId,
+  });
+  t.is(spy.callCount, 0);
+  const content = await models.doc.getContent(workspace.id, docId);
+  t.is(content, null);
+});
+
+test('should ignore update doc content to database when update type is workspace', async t => {
+  const { models, listener } = t.context;
+  const spy = Sinon.spy(models.doc, 'updateContent');
+  await listener.markDocContentCacheStale({
+    workspaceId: workspace.id,
+    docId: workspace.id,
+  });
+  t.is(spy.callCount, 0);
+});

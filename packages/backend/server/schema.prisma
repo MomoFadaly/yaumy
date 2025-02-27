@@ -252,6 +252,8 @@ model WorkspaceFeature {
 model Snapshot {
   workspaceId String   @map("workspace_id") @db.VarChar
   id          String   @default(uuid()) @map("guid") @db.VarChar
+  title       String?  @db.VarChar
+  summary     String?  @db.VarChar
   blob        Bytes    @db.ByteA
   state       Bytes?   @db.ByteA
   createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(3)

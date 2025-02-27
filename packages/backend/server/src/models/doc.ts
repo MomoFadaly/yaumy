@@ -5,8 +5,6 @@ import type { Update } from '@prisma/client';
 import { BaseModel } from './base';
 import type { Doc, DocEditor } from './common';
 
-export interface DocRecord extends Doc {}
-
 export interface DocHistorySimple {
   timestamp: number;
   editor: DocEditor | null;
@@ -31,6 +29,17 @@ export interface DocHistoryFilter {
   take?: number;
 }
 
+export interface DocContent {
+  /**
+   * The title of the doc.
+   */
+  title: string | null;
+  /**
+   * The summary of the doc.
+   */
+  summary: string | null;
+}
+
 /**
  * Workspace Doc Model
  *
@@ -43,7 +52,7 @@ export interface DocHistoryFilter {
 export class DocModel extends BaseModel {
   // #region Update
 
-  private updateToDocRecord(row: Update): DocRecord {
+  private updateToDocRecord(row: Update): Doc {
     return {
       spaceId: row.workspaceId,
       docId: row.id,
@@ -53,7 +62,7 @@ export class DocModel extends BaseModel {
     };
   }
 
-  private docRecordToUpdate(record: DocRecord): Update {
+  private docRecordToUpdate(record: Doc): Update {
     return {
       workspaceId: record.spaceId,
       id: record.docId,
@@ -74,7 +83,7 @@ export class DocModel extends BaseModel {
     };
   }
 
-  async createUpdates(updates: DocRecord[]) {
+  async createUpdates(updates: Doc[]) {
     return await this.db.update.createMany({
       data: updates.map(r => this.docRecordToUpdate(r)),
     });
@@ -83,7 +92,7 @@ export class DocModel extends BaseModel {
   /**
    * Find updates by workspaceId and docId.
    */
-  async findUpdates(workspaceId: string, docId: string): Promise<DocRecord[]> {
+  async findUpdates(workspaceId: string, docId: string): Promise<Doc[]> {
     const rows = await this.db.update.findMany({
       where: {
         workspaceId,
@@ -352,6 +361,55 @@ export class DocModel extends BaseModel {
         updatedByUser: this.userSelectFields,
       },
     });
+  }
+
+  async updateContent(workspaceId: string, docId: string, content: DocContent) {
+    return await this.db.snapshot.update({
+      where: { workspaceId_id: { workspaceId, id: docId } },
+      data: content,
+    });
+  }
+
+  async getContent(
+    workspaceId: string,
+    docId: string
+  ): Promise<DocContent | null> {
+    return await this.db.snapshot.findUnique({
+      where: {
+        workspaceId_id: { workspaceId, id: docId },
+      },
+      select: {
+        title: true,
+        summary: true,
+      },
+    });
+  }
+
+  async findContents(
+    ids: { workspaceId: string; docId: string }[]
+  ): Promise<(DocContent | null)[]> {
+    const rows = await this.db.snapshot.findMany({
+      where: {
+        workspaceId: { in: ids.map(id => id.workspaceId) },
+        id: { in: ids.map(id => id.docId) },
+      },
+      select: {
+        title: true,
+        summary: true,
+        id: true,
+        workspaceId: true,
+      },
+    });
+    const result = new Map(
+      rows.map(r => [
+        `${r.workspaceId}-${r.id}`,
+        {
+          title: r.title,
+          summary: r.summary,
+        },
+      ])
+    );
+    return ids.map(id => result.get(`${id.workspaceId}-${id.docId}`) ?? null);
   }
 
   /**
