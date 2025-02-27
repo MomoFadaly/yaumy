@@ -3,15 +3,12 @@ import { BookmarkBlockSpec } from '@blocksuite/affine-block-bookmark';
 import { CalloutBlockSpec } from '@blocksuite/affine-block-callout';
 import { CodeBlockSpec } from '@blocksuite/affine-block-code';
 import { DataViewBlockSpec } from '@blocksuite/affine-block-data-view';
-import {
-  DatabaseBlockSpec,
-  DatabaseSelectionExtension,
-} from '@blocksuite/affine-block-database';
+import { DatabaseBlockSpec } from '@blocksuite/affine-block-database';
 import { DividerBlockSpec } from '@blocksuite/affine-block-divider';
 import { EdgelessTextBlockSpec } from '@blocksuite/affine-block-edgeless-text';
 import { EmbedExtensions } from '@blocksuite/affine-block-embed';
 import { FrameBlockSpec } from '@blocksuite/affine-block-frame';
-import { ImageBlockSpec, ImageStoreSpec } from '@blocksuite/affine-block-image';
+import { ImageBlockSpec } from '@blocksuite/affine-block-image';
 import { LatexBlockSpec } from '@blocksuite/affine-block-latex';
 import { ListBlockSpec } from '@blocksuite/affine-block-list';
 import {
@@ -27,42 +24,18 @@ import {
   EdgelessSurfaceRefBlockSpec,
   PageSurfaceRefBlockSpec,
 } from '@blocksuite/affine-block-surface-ref';
-import {
-  TableBlockSpec,
-  TableSelectionExtension,
-} from '@blocksuite/affine-block-table';
+import { TableBlockSpec } from '@blocksuite/affine-block-table';
 import {
   RefNodeSlotsExtension,
   RichTextExtensions,
 } from '@blocksuite/affine-components/rich-text';
 import {
-  HighlightSelectionExtension,
-  ImageSelectionExtension,
-} from '@blocksuite/affine-shared/selection';
-import {
   DefaultOpenDocExtension,
   DocDisplayMetaService,
   EditPropsStore,
-  FeatureFlagService,
-  FileSizeLimitService,
   FontLoaderService,
-  LinkPreviewerService,
 } from '@blocksuite/affine-shared/services';
-import {
-  BlockSelectionExtension,
-  CursorSelectionExtension,
-  SurfaceSelectionExtension,
-  TextSelectionExtension,
-} from '@blocksuite/block-std';
 import type { ExtensionType } from '@blocksuite/store';
-
-import {
-  AdapterFactoryExtensions,
-  HtmlAdapterExtension,
-  MarkdownAdapterExtension,
-  NotionHtmlAdapterExtension,
-  PlainTextAdapterExtension,
-} from '../adapters/extension.js';
 
 export const CommonBlockSpecs: ExtensionType[] = [
   DocDisplayMetaService,
@@ -83,7 +56,6 @@ export const CommonBlockSpecs: ExtensionType[] = [
   ParagraphBlockSpec,
   DefaultOpenDocExtension,
   FontLoaderService,
-  AdapterFactoryExtensions,
   CalloutBlockSpec,
 ].flat();
 
@@ -102,25 +74,4 @@ export const EdgelessFirstPartyBlockSpecs: ExtensionType[] = [
   EdgelessSurfaceRefBlockSpec,
   FrameBlockSpec,
   EdgelessTextBlockSpec,
-].flat();
-
-export const StoreExtensions: ExtensionType[] = [
-  BlockSelectionExtension,
-  TextSelectionExtension,
-  SurfaceSelectionExtension,
-  CursorSelectionExtension,
-  HighlightSelectionExtension,
-  ImageSelectionExtension,
-  DatabaseSelectionExtension,
-  TableSelectionExtension,
-
-  FeatureFlagService,
-  LinkPreviewerService,
-  FileSizeLimitService,
-  ImageStoreSpec,
-
-  HtmlAdapterExtension,
-  MarkdownAdapterExtension,
-  NotionHtmlAdapterExtension,
-  PlainTextAdapterExtension,
 ].flat();

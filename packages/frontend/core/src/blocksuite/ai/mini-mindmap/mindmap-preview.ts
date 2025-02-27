@@ -12,7 +12,7 @@ import {
 } from '@blocksuite/affine/blocks';
 import type { ServiceProvider } from '@blocksuite/affine/global/di';
 import { WithDisposable } from '@blocksuite/affine/global/utils';
-import { Schema, type Store, Transformer } from '@blocksuite/affine/store';
+import { Schema, type Store } from '@blocksuite/affine/store';
 import { css, html, LitElement, nothing } from 'lit';
 import { property, query } from 'lit/decorators.js';
 import { repeat } from 'lit/directives/repeat.js';
@@ -99,7 +99,6 @@ export class MiniMindmapPreview extends WithDisposable(LitElement) {
 
     const collection = new WorkspaceImpl({
       id: 'MINI_MINDMAP_TEMPORARY',
-      schema,
     });
     collection.meta.initialize();
     const doc = collection.createDoc({ id: 'doc:home' }).load();
@@ -236,15 +235,7 @@ export const markdownToMindmap = (
   provider: ServiceProvider
 ) => {
   let result: Node | null = null;
-  const transformer = new Transformer({
-    schema: doc.workspace.schema,
-    blobCRUD: doc.workspace.blobSync,
-    docCRUD: {
-      create: (id: string) => doc.workspace.createDoc({ id }),
-      get: (id: string) => doc.workspace.getDoc(id),
-      delete: (id: string) => doc.workspace.removeDoc(id),
-    },
-  });
+  const transformer = doc.getTransformer();
   const markdown = new MarkdownAdapter(transformer, provider);
   const ast: Root = markdown['_markdownToAst'](answer);
   const traverse = (

@@ -16,7 +16,7 @@ import {
   type DocSnapshot,
   DocSnapshotSchema,
   type SnapshotNode,
-  Transformer,
+  type Transformer,
 } from '@blocksuite/store';
 import type * as Y from 'yjs';
 /**
@@ -90,16 +90,7 @@ export class TemplateJob {
   type: TemplateType;
 
   constructor({ model, type, middlewares }: TemplateJobConfig) {
-    this.job = new Transformer({
-      schema: model.doc.workspace.schema,
-      blobCRUD: model.doc.workspace.blobSync,
-      docCRUD: {
-        create: (id: string) => model.doc.workspace.createDoc({ id }),
-        get: (id: string) => model.doc.workspace.getDoc(id),
-        delete: (id: string) => model.doc.workspace.removeDoc(id),
-      },
-      middlewares: [],
-    });
+    this.job = model.doc.getTransformer();
     this.model = model;
     this.type = TEMPLATE_TYPES.includes(type as TemplateType)
       ? (type as TemplateType)
@@ -320,8 +311,7 @@ export class TemplateJob {
     from: Record<string, Record<string, unknown>>,
     to: Y.Map<Y.Map<unknown>>
   ) {
-    const schema =
-      this.model.doc.workspace.schema.flavourSchemaMap.get('affine:surface');
+    const schema = this.model.doc.schema.get('affine:surface');
     const surfaceTransformer = schema?.transformer?.(
       new Map()
     ) as SurfaceBlockTransformer;
