@@ -4,12 +4,29 @@ import type { GfxModel } from '@blocksuite/block-std/gfx';
 import { almostEqual, Bound, Point } from '@blocksuite/global/utils';
 
 interface Distance {
-  absXDistance: number;
-  absYDistance: number;
-  xDistance: number;
-  yDistance: number;
-  sameXDistanceIndices: number[];
-  sameYDistanceIndices: number[];
+  horiz?: {
+    /**
+     * the minimum x moving distance to align with other bound
+     */
+    distance: number;
+
+    /**
+     * the indices of the align position
+     */
+    alignPositionIndices: number[];
+  };
+
+  vert?: {
+    /**
+     * the minimum y moving distance to align with other bound
+     */
+    distance: number;
+
+    /**
+     * the indices of the align position
+     */
+    alignPositionIndices: number[];
+  };
 }
 
 const ALIGN_THRESHOLD = 8;
@@ -419,29 +436,36 @@ export class SnapManager extends Overlay {
     const closestX = Math.min(...xDistancesAbs);
     const closestY = Math.min(...yDistancesAbs);
 
-    const indexX = xDistancesAbs.indexOf(closestX);
-    const indexY = yDistancesAbs.indexOf(closestY);
+    const threshold = ALIGN_THRESHOLD / this.gfx.viewport.zoom;
 
     // the x and y distances will be useful for locating the align point
     return {
-      absXDistance: closestX,
-      absYDistance: closestY,
-      xDistance: xDistances[indexX],
-      yDistance: yDistances[indexY],
-      get sameXDistanceIndices() {
-        const indices: number[] = [];
-        xDistancesAbs.forEach(
-          (val, idx) => almostEqual(val, closestX) && indices.push(idx)
-        );
-        return indices;
-      },
-      get sameYDistanceIndices() {
-        const indices: number[] = [];
-        yDistancesAbs.forEach(
-          (val, idx) => almostEqual(val, closestY) && indices.push(idx)
-        );
-        return indices;
-      },
+      horiz:
+        closestX <= threshold
+          ? {
+              distance: xDistances[xDistancesAbs.indexOf(closestX)],
+              get alignPositionIndices() {
+                const indices: number[] = [];
+                xDistancesAbs.forEach(
+                  (val, idx) => almostEqual(val, closestX) && indices.push(idx)
+                );
+                return indices;
+              },
+            }
+          : undefined,
+      vert:
+        closestY <= threshold
+          ? {
+              distance: yDistances[yDistancesAbs.indexOf(closestY)],
+              get alignPositionIndices() {
+                const indices: number[] = [];
+                yDistancesAbs.forEach(
+                  (val, idx) => almostEqual(val, closestY) && indices.push(idx)
+                );
+                return indices;
+              },
+            }
+          : undefined,
     };
   }
 
@@ -458,7 +482,10 @@ export class SnapManager extends Overlay {
     other: Bound,
     distance: Distance
   ) {
-    const { xDistance: dx, sameXDistanceIndices } = distance;
+    if (!distance.horiz) return;
+
+    const { distance: dx, alignPositionIndices: distanceIndices } =
+      distance.horiz;
     const alignXPosition = [
       other.center[0],
       other.minX,
@@ -471,11 +498,12 @@ export class SnapManager extends Overlay {
 
     rst.dx = dx;
 
-    const top = Math.min(bound.minY, other.minY);
-    const down = Math.max(bound.maxY, other.maxY);
+    const dy = distance.vert?.distance ?? 0;
+    const top = Math.min(bound.minY + dy, other.minY);
+    const down = Math.max(bound.maxY + dy, other.maxY);
 
     this._intraGraphicAlignLines.push(
-      ...sameXDistanceIndices.map(
+      ...distanceIndices.map(
         idx =>
           [
             new Point(alignXPosition[idx], top),
@@ -483,8 +511,6 @@ export class SnapManager extends Overlay {
           ] as [Point, Point]
       )
     );
-
-    this._intraGraphicAlignLines[0];
   }
 
   // Update Y align point
@@ -494,7 +520,9 @@ export class SnapManager extends Overlay {
     other: Bound,
     distance: Distance
   ) {
-    const { yDistance: dy, sameYDistanceIndices } = distance;
+    if (!distance.vert) return;
+
+    const { distance: dy, alignPositionIndices } = distance.vert;
     const alignXPosition = [
       other.center[1],
       other.minY,
@@ -507,11 +535,12 @@ export class SnapManager extends Overlay {
 
     rst.dy = dy;
 
-    const left = Math.min(bound.minX, other.minX);
-    const right = Math.max(bound.maxX, other.maxX);
+    const dx = distance.horiz?.distance ?? 0;
+    const left = Math.min(bound.minX + dx, other.minX);
+    const right = Math.max(bound.maxX + dx, other.maxX);
 
     this._intraGraphicAlignLines.push(
-      ...sameYDistanceIndices.map(
+      ...alignPositionIndices.map(
         idx =>
           [
             new Point(left, alignXPosition[idx]),
@@ -533,11 +562,11 @@ export class SnapManager extends Overlay {
     for (const other of this._referenceBounds.all) {
       const closestDistances = this._calculateClosestDistances(bound, other);
 
-      if (closestDistances.absXDistance < threshold) {
+      if (closestDistances.horiz) {
         this._updateXAlignPoint(rst, bound, other, closestDistances);
       }
 
-      if (closestDistances.absYDistance < threshold) {
+      if (closestDistances.vert) {
         this._updateYAlignPoint(rst, bound, other, closestDistances);
       }
     }
@@ -564,7 +593,7 @@ export class SnapManager extends Overlay {
       return;
     const { viewport } = this.gfx;
     const strokeWidth = 2 / viewport.zoom;
-    const offset = 0;
+
     ctx.strokeStyle = '#8B5CF6';
     ctx.lineWidth = strokeWidth;
     ctx.beginPath();
@@ -575,12 +604,12 @@ export class SnapManager extends Overlay {
         const x = line[0].x;
         const minY = Math.min(line[0].y, line[1].y);
         const maxY = Math.max(line[0].y, line[1].y);
-        d = `M${x},${minY - offset}L${x},${maxY}`;
+        d = `M${x},${minY}L${x},${maxY}`;
       } else {
         const y = line[0].y;
         const minX = Math.min(line[0].x, line[1].x);
         const maxX = Math.max(line[0].x, line[1].x);
-        d = `M${minX - offset},${y}L${maxX + offset},${y}`;
+        d = `M${minX},${y}L${maxX},${y}`;
       }
       ctx.stroke(new Path2D(d));
     });
