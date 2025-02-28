@@ -13,6 +13,7 @@ interface Distance {
 }
 
 const ALIGN_THRESHOLD = 8;
+const DISTRIBUTION_LINE_OFFSET = 1;
 
 export class SnapManager extends Overlay {
   static override overlayName: string = 'snap-manager';
@@ -118,7 +119,7 @@ export class SnapManager extends Overlay {
               (a, b) => a - b
             );
             const y = (ys[1] + ys[2]) / 2;
-            const offset = 1 / viewport.zoom;
+            const offset = DISTRIBUTION_LINE_OFFSET / viewport.zoom;
             const xs = [
               _centerX - bound.w / 2,
               _centerX + bound.w / 2,
@@ -276,7 +277,7 @@ export class SnapManager extends Overlay {
               (a, b) => a - b
             );
             const x = (xs[1] + xs[2]) / 2;
-            const offset = 1 / viewport.zoom;
+            const offset = DISTRIBUTION_LINE_OFFSET / viewport.zoom;
             const ys = [
               _centerY - bound.h / 2,
               _centerY + bound.h / 2,
