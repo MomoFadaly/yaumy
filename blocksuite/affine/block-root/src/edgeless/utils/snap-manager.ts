@@ -8,8 +8,8 @@ interface Distance {
   absYDistance: number;
   xDistance: number;
   yDistance: number;
-  indexX: number;
-  indexY: number;
+  sameXDistanceIndices: number[];
+  sameYDistanceIndices: number[];
 }
 
 const ALIGN_THRESHOLD = 8;
@@ -428,8 +428,20 @@ export class SnapManager extends Overlay {
       absYDistance: closestY,
       xDistance: xDistances[indexX],
       yDistance: yDistances[indexY],
-      indexX,
-      indexY,
+      get sameXDistanceIndices() {
+        const indices: number[] = [];
+        xDistancesAbs.forEach(
+          (val, idx) => almostEqual(val, closestX) && indices.push(idx)
+        );
+        return indices;
+      },
+      get sameYDistanceIndices() {
+        const indices: number[] = [];
+        yDistancesAbs.forEach(
+          (val, idx) => almostEqual(val, closestY) && indices.push(idx)
+        );
+        return indices;
+      },
     };
   }
 
@@ -446,21 +458,33 @@ export class SnapManager extends Overlay {
     other: Bound,
     distance: Distance
   ) {
-    const index = distance.indexX;
-    rst.dx = distance.xDistance;
-    const alignPointX = [
+    const { xDistance: dx, sameXDistanceIndices } = distance;
+    const alignXPosition = [
       other.center[0],
       other.minX,
       other.maxX,
-      bound.minX + rst.dx,
-      bound.minX + rst.dx,
-      bound.maxX + rst.dx,
-      bound.maxX + rst.dx,
-    ][index];
-    this._intraGraphicAlignLines[0] = [
-      new Point(alignPointX, bound.center[1]),
-      new Point(alignPointX, other.center[1]),
+      bound.minX + dx,
+      bound.minX + dx,
+      bound.maxX + dx,
+      bound.maxX + dx,
     ];
+
+    rst.dx = dx;
+
+    const top = Math.min(bound.minY, other.minY);
+    const down = Math.max(bound.maxY, other.maxY);
+
+    this._intraGraphicAlignLines.push(
+      ...sameXDistanceIndices.map(
+        idx =>
+          [
+            new Point(alignXPosition[idx], top),
+            new Point(alignXPosition[idx], down),
+          ] as [Point, Point]
+      )
+    );
+
+    this._intraGraphicAlignLines[0];
   }
 
   // Update Y align point
@@ -470,21 +494,31 @@ export class SnapManager extends Overlay {
     other: Bound,
     distance: Distance
   ) {
-    const index = distance.indexY;
-    rst.dy = distance.yDistance;
-    const alignPointY = [
+    const { yDistance: dy, sameYDistanceIndices } = distance;
+    const alignXPosition = [
       other.center[1],
       other.minY,
       other.maxY,
-      bound.minY + rst.dy,
-      bound.minY + rst.dy,
-      bound.maxY + rst.dy,
-      bound.maxY + rst.dy,
-    ][index];
-    this._intraGraphicAlignLines[1] = [
-      new Point(bound.center[0], alignPointY),
-      new Point(other.center[0], alignPointY),
+      bound.minY + dy,
+      bound.minY + dy,
+      bound.maxY + dy,
+      bound.maxY + dy,
     ];
+
+    rst.dy = dy;
+
+    const left = Math.min(bound.minX, other.minX);
+    const right = Math.max(bound.maxX, other.maxX);
+
+    this._intraGraphicAlignLines.push(
+      ...sameYDistanceIndices.map(
+        idx =>
+          [
+            new Point(left, alignXPosition[idx]),
+            new Point(right, alignXPosition[idx]),
+          ] as [Point, Point]
+      )
+    );
   }
 
   align(bound: Bound): { dx: number; dy: number } {
@@ -531,7 +565,7 @@ export class SnapManager extends Overlay {
     const { viewport } = this.gfx;
     const strokeWidth = 2 / viewport.zoom;
     const offset = 0;
-    ctx.strokeStyle = '#1672F3';
+    ctx.strokeStyle = '#8B5CF6';
     ctx.lineWidth = strokeWidth;
     ctx.beginPath();
 
