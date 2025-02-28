@@ -247,9 +247,12 @@ export class CopilotContextRootResolver {
     @Args('docId', { type: () => [String] }) docIds: string[]
   ) {
     await this.permissions.checkCloudWorkspace(workspaceId, user.id);
-    for (const docId of docIds) {
-      this.event.emit('workspace.doc.embedding', { workspaceId, docId });
-    }
+
+    this.event.emit(
+      'workspace.doc.embedding',
+      docIds.map(docId => ({ workspaceId, docId }))
+    );
+
     return true;
   }
 

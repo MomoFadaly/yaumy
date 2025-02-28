@@ -1,35 +1,40 @@
-import { Injectable, Optional } from '@nestjs/common';
-import { SchedulerRegistry } from '@nestjs/schedule';
+import { Injectable } from '@nestjs/common';
 import { Prisma, PrismaClient } from '@prisma/client';
 import OpenAI from 'openai';
 
 import {
   AFFiNELogger,
-  Cache,
   CallMetric,
   Config,
+  JobQueue,
   metrics,
   OnEvent,
+  OnJob,
 } from '../../../base';
 import { DocReader } from '../../../core/doc';
 import { OpenAIEmbeddingClient } from './embedding';
 import { EmbeddingClient } from './types';
 
-const EMBEDDING_QUEUE_CACHE_KEY = 'context:queue';
-const EMBEDDING_QUEUE_POLL_INTERVAL = 1000 * 1; // 1 second
+declare global {
+  interface Jobs {
+    'doc.embedPendingDocs': {
+      workspaceId: string;
+      docId: string;
+    };
+  }
+}
 
 @Injectable()
 export class CopilotContextDocJob {
-  private busy = false;
   private readonly client: EmbeddingClient | undefined;
 
   constructor(
     config: Config,
-    private readonly cache: Cache,
+
     private readonly db: PrismaClient,
     private readonly doc: DocReader,
     private readonly logger: AFFiNELogger,
-    @Optional() private readonly registry?: SchedulerRegistry
+    private readonly queue: JobQueue
   ) {
     this.logger.setContext(CopilotContextDocJob.name);
     const configure = config.plugins.copilot.openai;
@@ -43,72 +48,17 @@ export class CopilotContextDocJob {
     return this.client as EmbeddingClient;
   }
 
-  onModuleInit() {
-    if (this.registry) {
-      this.registry.addInterval(
-        this.autoEmbedPendingDocs.name,
-        // scheduler registry will clean up the interval when the app is stopped
-        setInterval(() => {
-          if (this.busy) {
-            return;
-          }
-          this.busy = true;
-          this.autoEmbedPendingDocs()
-            .catch(() => {
-              /* never fail */
-            })
-            .finally(() => {
-              this.busy = false;
-            });
-        }, EMBEDDING_QUEUE_POLL_INTERVAL)
-      );
-
-      this.logger.log('Updates pending queue auto merging cron started');
-    }
-  }
-
   @OnEvent('workspace.doc.embedding')
-  async addQueue({ workspaceId, docId }: Events['workspace.doc.embedding']) {
-    return await this.cache.mapIncrease(
-      EMBEDDING_QUEUE_CACHE_KEY,
-      `${workspaceId}::${docId}`
-    );
-  }
-
-  private async randomDoc() {
-    const key = await this.cache.mapRandomKey(EMBEDDING_QUEUE_CACHE_KEY);
-    if (key) {
-      const calledCount = await this.cache.mapIncrease(
-        EMBEDDING_QUEUE_CACHE_KEY,
-        key,
-        0
-      );
-
-      if (calledCount > 0) {
-        const [workspaceId, id] = key.split('::');
-        const count = await this.db.snapshot.count({
-          where: {
-            workspaceId,
-            id,
-          },
-        });
-        if (count > 0) {
-          // only embedding the doc if exists
-          return { workspaceId, docId: id };
-        }
-      }
+  async addQueue(docs: Events['workspace.doc.embedding']) {
+    for (const { workspaceId, docId } of docs) {
+      await this.queue.add('doc.embedPendingDocs', { workspaceId, docId });
     }
-    return null;
   }
 
-  @CallMetric('doc', 'auto_embed_pending_docs')
-  async autoEmbedPendingDocs() {
-    let randomDoc: { workspaceId: string; docId: string } | null = null;
+  @CallMetric('doc', 'embed_pending_docs')
+  @OnJob('doc.embedPendingDocs')
+  async embedPendingDocs({ workspaceId, docId }: Jobs['doc.embedPendingDocs']) {
     try {
-      randomDoc = await this.randomDoc();
-      if (!randomDoc) return;
-
-      const { workspaceId, docId } = randomDoc;
       const content = await this.doc.getDocContent(workspaceId, docId);
       if (content) {
         // no need to check if embeddings is empty, will throw internally
@@ -137,8 +87,13 @@ export class CopilotContextDocJob {
         }
       }
     } catch (e: any) {
-      metrics.doc.counter('auto_embed_pending_docs_error').add(1);
-      this.logger.error('Failed to embed pending doc', randomDoc || '', e);
+      metrics.doc
+        .counter('auto_embed_pending_docs_error')
+        .add(1, { workspaceId });
+      this.logger.error(
+        `Failed to embed pending doc: ${workspaceId}::${docId}`,
+        e
+      );
     }
   }
 }

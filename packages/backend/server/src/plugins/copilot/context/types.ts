@@ -7,10 +7,10 @@ import { parseDoc } from '../../../native';
 
 declare global {
   interface Events {
-    'workspace.doc.embedding': {
+    'workspace.doc.embedding': Array<{
       workspaceId: string;
       docId: string;
-    };
+    }>;
   }
 }
 
