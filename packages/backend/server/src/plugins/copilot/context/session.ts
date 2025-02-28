@@ -140,7 +140,6 @@ export class ContextSession implements AsyncDisposable {
       const file = new File([buffer], name);
       return await this.addFile(file, fileId, signal);
     } catch (e: any) {
-      console.error(e);
       await this.saveFileRecord(fileId, file => ({
         ...(file as ContextFile),
         status: ContextFileStatus.failed,
@@ -245,7 +244,7 @@ export class ContextSession implements AsyncDisposable {
     return similarityChunks.filter(c => Number(c.distance) <= threshold);
   }
 
-  private async saveFileRecord(
+  async saveFileRecord(
     fileId: string,
     cb: (
       record: Pick<ContextFile, 'id' | 'status'> &

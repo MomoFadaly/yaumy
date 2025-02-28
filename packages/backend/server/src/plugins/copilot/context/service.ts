@@ -8,12 +8,19 @@ import {
   CopilotInvalidContext,
   CopilotSessionNotFound,
   NoCopilotProviderAvailable,
+  OnEvent,
   PrismaTransaction,
 } from '../../../base';
 import { OpenAIEmbeddingClient } from './embedding';
 import { CopilotContextDocJob } from './job';
 import { ContextSession } from './session';
-import { ContextConfig, ContextConfigSchema, EmbeddingClient } from './types';
+import {
+  ContextConfig,
+  ContextConfigSchema,
+  ContextFile,
+  ContextFileStatus,
+  EmbeddingClient,
+} from './types';
 
 const CONTEXT_SESSION_KEY = 'context-session';
 
@@ -145,5 +152,17 @@ export class CopilotContextService {
     });
     if (existsContext) return this.get(existsContext.id);
     return null;
+  }
+
+  @OnEvent('workspace.file.embedded')
+  async onFileEmbedded({
+    contextId,
+    fileId,
+  }: Events['workspace.file.embedded']) {
+    const context = await this.get(contextId);
+    await context.saveFileRecord(fileId, file => ({
+      ...(file as ContextFile),
+      status: ContextFileStatus.finished,
+    }));
   }
 }

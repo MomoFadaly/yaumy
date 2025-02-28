@@ -6,7 +6,6 @@ import OpenAI from 'openai';
 
 import {
   AFFiNELogger,
-  CallMetric,
   Config,
   EventBus,
   JobQueue,
@@ -93,7 +92,6 @@ export class CopilotContextDocJob {
     return Prisma.join(groups.map(row => Prisma.sql`(${Prisma.join(row)})`));
   }
 
-  @CallMetric('doc', 'embed_pending_files')
   @OnJob('doc.embedPendingFiles')
   async embedPendingFiles({
     contextId,
@@ -112,11 +110,11 @@ export class CopilotContextDocJob {
           ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
           content = EXCLUDED.content, embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
         `;
-        const { count } = await tx.$queryRaw<{ count: number }>`
+        const [{ count }] = await tx.$queryRaw<{ count: number }[]>`
           SELECT count(*) as count FROM "ai_context_embeddings"
           WHERE context_id = ${contextId} AND file_id = ${fileId};
         `;
-        if (count === total) {
+        if (Number(count) === total) {
           this.event.emit('workspace.file.embedded', { contextId, fileId });
         }
       });
@@ -131,7 +129,6 @@ export class CopilotContextDocJob {
     }
   }
 
-  @CallMetric('doc', 'embed_pending_docs')
   @OnJob('doc.embedPendingDocs')
   async embedPendingDocs({ workspaceId, docId }: Jobs['doc.embedPendingDocs']) {
     try {
