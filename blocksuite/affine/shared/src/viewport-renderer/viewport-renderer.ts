@@ -1,5 +1,4 @@
 import {
-  type BlockStdScope,
   LifeCycleWatcher,
   LifeCycleWatcherIdentifier,
   StdIdentifier,
@@ -27,27 +26,20 @@ export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
 const debug = false; // Toggle for debug logs
 const zoomThreshold = 1; // With high enough zoom, fallback to DOM rendering
 const debounceTime = 1000; // During this period, fallback to DOM
+const workerUrl = new URL('./painter.worker.ts', import.meta.url);
 
 export class ViewportTurboRendererExtension extends LifeCycleWatcher {
-  state: RenderingState = 'inactive';
-  disposables = new DisposableGroup();
-  private layoutVersion = 0;
-  static override setup(di: Container) {
-    di.addImpl(ViewportTurboRendererIdentifier, this, [StdIdentifier]);
-  }
-
+  public state: RenderingState = 'inactive';
   public readonly canvas: HTMLCanvasElement = document.createElement('canvas');
-  private readonly worker: Worker;
+  private readonly worker: Worker = new Worker(workerUrl, { type: 'module' });
+  private readonly disposables = new DisposableGroup();
   private layoutCacheData: ViewportLayout | null = null;
+  private layoutVersion = 0;
   private bitmap: ImageBitmap | null = null;
   private viewportElement: GfxViewportElement | null = null;
 
-  constructor(std: BlockStdScope) {
-    super(std);
-    this.worker = new Worker(new URL('./painter.worker.ts', import.meta.url), {
-      type: 'module',
-    });
-    this.debugLog('Initialized ViewportTurboRenderer');
+  static override setup(di: Container) {
+    di.addImpl(ViewportTurboRendererIdentifier, this, [StdIdentifier]);
   }
 
   override mounted() {
