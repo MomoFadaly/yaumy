@@ -1,11 +1,13 @@
 import './config';
 
 import { ServerFeature } from '../../core/config';
+import { DocStorageModule } from '../../core/doc';
 import { FeatureModule } from '../../core/features';
 import { PermissionModule } from '../../core/permission';
 import { QuotaModule } from '../../core/quota';
 import { Plugin } from '../registry';
 import {
+  CopilotContextDocJob,
   CopilotContextResolver,
   CopilotContextRootResolver,
   CopilotContextService,
@@ -36,7 +38,7 @@ registerCopilotProvider(PerplexityProvider);
 
 @Plugin({
   name: 'copilot',
-  imports: [FeatureModule, QuotaModule, PermissionModule],
+  imports: [DocStorageModule, FeatureModule, QuotaModule, PermissionModule],
   providers: [
     ChatSessionService,
     CopilotResolver,
@@ -53,6 +55,7 @@ registerCopilotProvider(PerplexityProvider);
     CopilotContextRootResolver,
     CopilotContextResolver,
     CopilotContextService,
+    CopilotContextDocJob,
   ],
   controllers: [CopilotController],
   contributesTo: ServerFeature.Copilot,

@@ -1,8 +1,7 @@
 import { File } from 'node:buffer';
-import { randomUUID } from 'node:crypto';
 import { Readable } from 'node:stream';
 
-import { Prisma, PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { nanoid } from 'nanoid';
 
 import {
@@ -12,6 +11,7 @@ import {
   PrismaTransaction,
   UserFriendlyError,
 } from '../../../base';
+import { CopilotContextDocJob } from './job';
 import {
   ChunkSimilarity,
   ContextConfig,
@@ -20,7 +20,6 @@ import {
   ContextFileStatus,
   ContextList,
   DocChunkSimilarity,
-  Embedding,
   EmbeddingClient,
   FileChunkSimilarity,
 } from './types';
@@ -28,6 +27,7 @@ import {
 export class ContextSession implements AsyncDisposable {
   constructor(
     private readonly client: EmbeddingClient,
+    private readonly jobs: CopilotContextDocJob,
     private readonly contextId: string,
     private readonly config: ContextConfig,
     private readonly db: PrismaClient,
@@ -161,8 +161,19 @@ export class ContextSession implements AsyncDisposable {
     signal?: AbortSignal
   ): Promise<ContextFile> {
     // no need to check if embeddings is empty, will throw internally
-    const embeddings = await this.client.getFileEmbeddings(file, signal);
-    return await this.insertEmbeddings(fileId, embeddings);
+    const chunks = await this.client.getFileChunks(file, signal);
+    const total = chunks.reduce((acc, c) => acc + c.length, 0);
+
+    await this.jobs.addFileEmbeddingQueue(
+      chunks.map(chunks => ({
+        contextId: this.id,
+        fileId,
+        chunks,
+        total,
+      }))
+    );
+
+    return this.config.files.find(f => f.id === fileId) as ContextFile;
   }
 
   async removeFile(fileId: string): Promise<boolean> {
@@ -232,41 +243,6 @@ export class ContextSession implements AsyncDisposable {
       LIMIT ${topK};
     `;
     return similarityChunks.filter(c => Number(c.distance) <= threshold);
-  }
-
-  private processEmbeddings(fileId: string, embeddings: Embedding[]) {
-    const groups = embeddings.map(e => [
-      randomUUID(),
-      this.contextId,
-      fileId,
-      e.index,
-      e.content,
-      Prisma.raw(`'[${e.embedding.join(',')}]'`),
-      new Date(),
-    ]);
-    return Prisma.join(groups.map(row => Prisma.sql`(${Prisma.join(row)})`));
-  }
-
-  private async insertEmbeddings(
-    fileId: string,
-    embeddings: Embedding[][]
-  ): Promise<ContextFile> {
-    for (const chunk of embeddings) {
-      const values = this.processEmbeddings(fileId, chunk);
-      await this.db.$executeRaw`
-        INSERT INTO "ai_context_embeddings"
-        ("id", "context_id", "file_id", "chunk", "content", "embedding", "updated_at") VALUES ${values}
-        ON CONFLICT (context_id, file_id, chunk) DO UPDATE SET
-        content = EXCLUDED.content, embedding = EXCLUDED.embedding, updated_at = excluded.updated_at;
-      `;
-    }
-    await this.saveFileRecord(fileId, file => ({
-      ...(file as ContextFile),
-      status: ContextFileStatus.finished,
-    }));
-
-    // should exists
-    return this.config.files.find(f => f.id === fileId) as ContextFile;
   }
 
   private async saveFileRecord(
