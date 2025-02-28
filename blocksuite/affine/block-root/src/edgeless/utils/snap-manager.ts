@@ -1,7 +1,7 @@
 import { Overlay } from '@blocksuite/affine-block-surface';
 import { ConnectorElementModel } from '@blocksuite/affine-model';
 import type { GfxModel } from '@blocksuite/block-std/gfx';
-import { Bound, Point } from '@blocksuite/global/utils';
+import { almostEqual, Bound, Point } from '@blocksuite/global/utils';
 
 interface Distance {
   absXDistance: number;
@@ -69,26 +69,47 @@ export class SnapManager extends Overlay {
         wBoxes.push(box);
       }
     });
+
+    wBoxes.sort((a, b) => a.center[0] - b.center[0]);
+
     let dif = Infinity;
     let min = Infinity;
+    let aveDis = Number.MAX_SAFE_INTEGER;
+    let curBound!: {
+      leftIdx: number;
+      rightIdx: number;
+      spacing: number;
+      points: [Point, Point][];
+    };
     for (let i = 0; i < wBoxes.length; i++) {
       for (let j = i + 1; j < wBoxes.length; j++) {
         let lb = wBoxes[i],
           rb = wBoxes[j];
         // it means these bound need to be horizontally across
-        if (!lb.isHorizontalCross(rb)) continue;
-        if (lb.isIntersectWithBound(rb)) continue;
+        if (!lb.isHorizontalCross(rb) || lb.isIntersectWithBound(rb)) continue;
+
+        let switchFlag = false;
+        // exchange lb and rb to make sure lb is on the left of rb
         if (rb.maxX < lb.minX) {
           const temp = rb;
           rb = lb;
           lb = temp;
+          switchFlag = true;
         }
-        /** align middle */
+
         let _centerX = 0;
         const updateDif = () => {
           dif = Math.abs(bound.center[0] - _centerX);
-          if (dif <= threshold && dif < min) {
+          const curAveDis =
+            (Math.abs(lb.center[0] - bound.center[0]) +
+              Math.abs(rb.center[0] - bound.center[0])) /
+            2;
+          if (
+            dif <= threshold &&
+            (dif < min || (almostEqual(dif, min) && curAveDis < aveDis))
+          ) {
             min = dif;
+            aveDis = curAveDis;
             rst.dx = _centerX - bound.center[0];
             /**
              * calculate points to draw
@@ -97,35 +118,100 @@ export class SnapManager extends Overlay {
               (a, b) => a - b
             );
             const y = (ys[1] + ys[2]) / 2;
-            const offset = 2 / viewport.zoom;
+            const offset = 1 / viewport.zoom;
             const xs = [
-              _centerX - bound.w / 2 - offset,
-              _centerX + bound.w / 2 + offset,
+              _centerX - bound.w / 2,
+              _centerX + bound.w / 2,
               rb.minX,
               rb.maxX,
               lb.minX,
               lb.maxX,
             ].sort((a, b) => a - b);
-            this._distributedAlignLines[0] = [
-              new Point(xs[1], y),
-              new Point(xs[2], y),
-            ];
-            this._distributedAlignLines[1] = [
-              new Point(xs[3], y),
-              new Point(xs[4], y),
-            ];
+
+            curBound = {
+              leftIdx: switchFlag ? j : i,
+              rightIdx: switchFlag ? i : j,
+              spacing: xs[2] - xs[1],
+              points: [
+                [new Point(xs[1] + offset, y), new Point(xs[2] - offset, y)],
+                [new Point(xs[3] + offset, y), new Point(xs[4] - offset, y)],
+              ],
+            };
           }
         };
+
+        /**
+         * align between left and right bound
+         */
         if (lb.horizontalDistance(rb) > bound.w) {
           _centerX = (lb.maxX + rb.minX) / 2;
           updateDif();
         }
-        /** align left */
+
+        /**
+         * align to the left bounds
+         */
         _centerX = lb.minX - (rb.minX - lb.maxX) - bound.w / 2;
         updateDif();
+
         /** align right */
         _centerX = rb.minX - lb.maxX + rb.maxX + bound.w / 2;
         updateDif();
+      }
+    }
+
+    // find the boxes that has same spacing
+    if (curBound) {
+      const { leftIdx, rightIdx, spacing, points } = curBound;
+
+      this._distributedAlignLines.push(...points);
+
+      {
+        let curLeftBound = wBoxes[leftIdx];
+
+        for (let i = leftIdx - 1; i >= 0; i--) {
+          if (almostEqual(wBoxes[i].maxX, curLeftBound.minX - spacing)) {
+            const targetBound = wBoxes[i];
+            const ys = [
+              targetBound.minY,
+              targetBound.maxY,
+              curLeftBound.minY,
+              curLeftBound.maxY,
+            ].sort((a, b) => a - b);
+            const y = (ys[1] + ys[2]) / 2;
+
+            this._distributedAlignLines.push([
+              new Point(wBoxes[i].maxX, y),
+              new Point(curLeftBound.minX, y),
+            ]);
+
+            curLeftBound = wBoxes[i];
+          }
+        }
+      }
+
+      {
+        let curRightBound = wBoxes[rightIdx];
+
+        for (let i = rightIdx + 1; i < wBoxes.length; i++) {
+          if (almostEqual(wBoxes[i].minX, curRightBound.maxX + spacing)) {
+            const targetBound = wBoxes[i];
+            const ys = [
+              targetBound.minY,
+              targetBound.maxY,
+              curRightBound.minY,
+              curRightBound.maxY,
+            ].sort((a, b) => a - b);
+            const y = (ys[1] + ys[2]) / 2;
+
+            this._distributedAlignLines.push([
+              new Point(curRightBound.maxX, y),
+              new Point(wBoxes[i].minX, y),
+            ]);
+
+            curRightBound = wBoxes[i];
+          }
+        }
       }
     }
   }
@@ -142,24 +228,45 @@ export class SnapManager extends Overlay {
         hBoxes.push(box);
       }
     });
+
+    hBoxes.sort((a, b) => a.center[0] - b.center[0]);
+
     let dif = Infinity;
     let min = Infinity;
+    let aveDis = Number.MAX_SAFE_INTEGER;
+    let curBound!: {
+      upperIdx: number;
+      lowerIdx: number;
+      spacing: number;
+      points: [Point, Point][];
+    };
     for (let i = 0; i < hBoxes.length; i++) {
       for (let j = i + 1; j < hBoxes.length; j++) {
         let ub = hBoxes[i],
           db = hBoxes[j];
-        if (!ub.isVerticalCross(db)) continue;
-        if (ub.isIntersectWithBound(db)) continue;
+        if (!ub.isVerticalCross(db) || ub.isIntersectWithBound(db)) continue;
+
+        let switchFlag = false;
         if (db.maxY < ub.minX) {
           const temp = ub;
           ub = db;
           db = temp;
+          switchFlag = true;
         }
+
         /** align middle */
         let _centerY = 0;
         const updateDiff = () => {
           dif = Math.abs(bound.center[1] - _centerY);
-          if (dif <= threshold && dif < min) {
+          const curAveDis =
+            (Math.abs(ub.center[1] - bound.center[1]) +
+              Math.abs(db.center[1] - bound.center[1])) /
+            2;
+
+          if (
+            dif <= threshold &&
+            (dif < min || (almostEqual(dif, min) && curAveDis < aveDis))
+          ) {
             min = dif;
             rst.dy = _centerY - bound.center[1];
             /**
@@ -169,35 +276,94 @@ export class SnapManager extends Overlay {
               (a, b) => a - b
             );
             const x = (xs[1] + xs[2]) / 2;
-            const offset = 2 / viewport.zoom;
+            const offset = 1 / viewport.zoom;
             const ys = [
-              _centerY - bound.h / 2 - offset,
-              _centerY + bound.h / 2 + offset,
+              _centerY - bound.h / 2,
+              _centerY + bound.h / 2,
               db.minY,
               db.maxY,
               ub.minY,
               ub.maxY,
             ].sort((a, b) => a - b);
-            this._distributedAlignLines[3] = [
-              new Point(x, ys[1]),
-              new Point(x, ys[2]),
-            ];
-            this._distributedAlignLines[4] = [
-              new Point(x, ys[3]),
-              new Point(x, ys[4]),
-            ];
+
+            curBound = {
+              upperIdx: switchFlag ? j : i,
+              lowerIdx: switchFlag ? i : j,
+              spacing: ys[2] - ys[1],
+              points: [
+                [new Point(x, ys[1] + offset), new Point(x, ys[2] - offset)],
+                [new Point(x, ys[3] + offset), new Point(x, ys[4] - offset)],
+              ],
+            };
           }
         };
+
         if (ub.verticalDistance(db) > bound.h) {
           _centerY = (ub.maxY + db.minY) / 2;
           updateDiff();
         }
+
         /** align upper */
         _centerY = ub.minY - (db.minY - ub.maxY) - bound.h / 2;
         updateDiff();
         /** align lower */
         _centerY = db.minY - ub.maxY + db.maxY + bound.h / 2;
         updateDiff();
+      }
+    }
+
+    // find the boxes that has same spacing
+    if (curBound) {
+      const { upperIdx, lowerIdx, spacing, points } = curBound;
+
+      this._distributedAlignLines.push(...points);
+
+      {
+        let curUpperBound = hBoxes[upperIdx];
+
+        for (let i = upperIdx - 1; i >= 0; i--) {
+          if (almostEqual(hBoxes[i].maxY, curUpperBound.minY - spacing)) {
+            const targetBound = hBoxes[i];
+            const xs = [
+              targetBound.minX,
+              targetBound.maxX,
+              curUpperBound.minX,
+              curUpperBound.maxX,
+            ].sort((a, b) => a - b);
+            const x = (xs[1] + xs[2]) / 2;
+
+            this._distributedAlignLines.push([
+              new Point(x, hBoxes[i].maxY),
+              new Point(x, curUpperBound.minY),
+            ]);
+
+            curUpperBound = hBoxes[i];
+          }
+        }
+      }
+
+      {
+        let curLowerBound = hBoxes[lowerIdx];
+
+        for (let i = lowerIdx + 1; i < hBoxes.length; i++) {
+          if (almostEqual(hBoxes[i].minY, curLowerBound.maxY + spacing)) {
+            const targetBound = hBoxes[i];
+            const xs = [
+              targetBound.minX,
+              targetBound.maxX,
+              curLowerBound.minX,
+              curLowerBound.maxX,
+            ].sort((a, b) => a - b);
+            const x = (xs[1] + xs[2]) / 2;
+
+            this._distributedAlignLines.push([
+              new Point(x, curLowerBound.maxY),
+              new Point(x, hBoxes[i].minY),
+            ]);
+
+            curLowerBound = hBoxes[i];
+          }
+        }
       }
     }
   }
@@ -266,7 +432,13 @@ export class SnapManager extends Overlay {
     };
   }
 
-  // Update X align point
+  /**
+   * Update x a
+   * @param rst
+   * @param bound
+   * @param other
+   * @param distance
+   */
   private _updateXAlignPoint(
     rst: { dx: number; dy: number },
     bound: Bound,
@@ -356,8 +528,8 @@ export class SnapManager extends Overlay {
     )
       return;
     const { viewport } = this.gfx;
-    const strokeWidth = 1 / viewport.zoom;
-    const offset = 5 / viewport.zoom;
+    const strokeWidth = 2 / viewport.zoom;
+    const offset = 0;
     ctx.strokeStyle = '#1672F3';
     ctx.lineWidth = strokeWidth;
     ctx.beginPath();
@@ -378,20 +550,21 @@ export class SnapManager extends Overlay {
       ctx.stroke(new Path2D(d));
     });
 
+    ctx.strokeStyle = '#CC4187';
     this._distributedAlignLines.forEach(line => {
       const bar = 10 / viewport.zoom;
       let d = '';
       if (line[0].x === line[1].x) {
         const x = line[0].x;
-        const minY = Math.min(line[0].y, line[1].y) + offset;
-        const maxY = Math.max(line[0].y, line[1].y) - offset;
+        const minY = Math.min(line[0].y, line[1].y);
+        const maxY = Math.max(line[0].y, line[1].y);
         d = `M${x},${minY}L${x},${maxY}
         M${x - bar},${minY}L${x + bar},${minY}
         M${x - bar},${maxY}L${x + bar},${maxY} `;
       } else {
         const y = line[0].y;
-        const minX = Math.min(line[0].x, line[1].x) + offset;
-        const maxX = Math.max(line[0].x, line[1].x) - offset;
+        const minX = Math.min(line[0].x, line[1].x);
+        const maxX = Math.max(line[0].x, line[1].x);
         d = `M${minX},${y}L${maxX},${y}
         M${minX},${y - bar}L${minX},${y + bar}
         M${maxX},${y - bar}L${maxX},${y + bar}`;
@@ -452,8 +625,6 @@ export class SnapManager extends Overlay {
       horizBounds.push(candidate.elementBound);
       allBounds.push(candidate.elementBound);
     });
-
-    console.log(horizCandidates, vertCandidates);
 
     this._referenceBounds = {
       horizontal: horizBounds,
