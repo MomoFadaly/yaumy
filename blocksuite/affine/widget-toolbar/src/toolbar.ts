@@ -24,12 +24,7 @@ import {
   WidgetComponent,
 } from '@blocksuite/block-std';
 import { GfxControllerIdentifier } from '@blocksuite/block-std/gfx';
-import {
-  Bound,
-  getCommonBound,
-  nextTick,
-  throttle,
-} from '@blocksuite/global/utils';
+import { Bound, getCommonBound, throttle } from '@blocksuite/global/utils';
 import type { Placement, ReferenceElement } from '@floating-ui/dom';
 import { batch, effect, signal } from '@preact/signals-core';
 import { css } from 'lit';
@@ -227,9 +222,7 @@ export class AffineToolbarWidget extends WidgetComponent {
         // 1. Prevents flickering effects.
         // 2. We cannot use `host.getUpdateComplete()` here
         // because it would cause excessive DOM queries, leading to UI jamming.
-        nextTick()
-          .then(() => flags.refresh(Flag.Text))
-          .catch(console.error);
+        flags.refresh(Flag.Text);
       })
     );
 
@@ -238,6 +231,15 @@ export class AffineToolbarWidget extends WidgetComponent {
       std.store.slots.blockUpdated.on(record => {
         if (record.type === 'delete') {
           flags.reset();
+          return;
+        }
+
+        if (
+          flags.check(Flag.Block) &&
+          record.type === 'update' &&
+          record.props.key === 'text'
+        ) {
+          flags.refresh(Flag.Block);
           return;
         }
       })
