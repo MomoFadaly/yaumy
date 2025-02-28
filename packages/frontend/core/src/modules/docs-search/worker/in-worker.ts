@@ -821,10 +821,20 @@ async function crawlingDocData({
           ...commonBlockProps,
           content: block.get('prop:latex')?.toString() ?? '',
         });
-      } else if (
-        bookmarkFlavours.has(flavour) ||
-        flavour === TableModelFlavour
-      ) {
+      } else if (flavour === TableModelFlavour) {
+        const contents = Array.from<string>(block.keys())
+          .map(key => {
+            if (key.startsWith('prop:cells.') && key.endsWith('.text')) {
+              return block.get(key)?.toString() ?? '';
+            }
+            return '';
+          })
+          .filter(Boolean);
+        blockDocuments.push({
+          ...commonBlockProps,
+          content: contents,
+        });
+      } else if (bookmarkFlavours.has(flavour)) {
         blockDocuments.push({
           ...commonBlockProps,
         });
