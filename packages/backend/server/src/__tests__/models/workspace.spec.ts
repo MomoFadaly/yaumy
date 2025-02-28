@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto';
+
 import { PrismaClient, WorkspaceMemberStatus } from '@prisma/client';
 import ava, { TestFn } from 'ava';
 import Sinon from 'sinon';
@@ -1079,4 +1081,32 @@ test('should get the workspace member invitation', async t => {
     invitation.id
   );
   t.deepEqual(invitation, invitation1);
+});
+
+test('should find and return exists workspaces', async t => {
+  const user = await t.context.user.create({
+    email: 'test@affine.pro',
+  });
+  const workspace1 = await t.context.workspace.create(user.id);
+  const workspace2 = await t.context.workspace.create(user.id);
+  await t.context.workspace.update(workspace1.id, {
+    name: 'test workspace 1',
+    avatarKey: 'test avatar key 1',
+  });
+  await t.context.workspace.update(workspace2.id, {
+    name: 'test workspace 2',
+    avatarKey: 'test avatar key 2',
+  });
+  const workspaces = await t.context.workspace.findMany([
+    workspace1.id,
+    workspace2.id,
+    randomUUID(),
+  ]);
+  t.is(workspaces.length, 2);
+  t.is(workspaces[0].id, workspace1.id);
+  t.is(workspaces[0].name, 'test workspace 1');
+  t.is(workspaces[0].avatarKey, 'test avatar key 1');
+  t.is(workspaces[1].id, workspace2.id);
+  t.is(workspaces[1].name, 'test workspace 2');
+  t.is(workspaces[1].avatarKey, 'test avatar key 2');
 });

@@ -30,6 +30,13 @@ export class DocEventsListener {
         return;
       }
       await this.models.doc.updateContent(workspaceId, docId, content);
+    } else {
+      // update workspace content to database
+      const content = this.docReader.parseWorkspaceContent(snapshot.blob);
+      if (!content) {
+        return;
+      }
+      await this.models.workspace.update(workspaceId, content);
     }
   }
 }

@@ -111,3 +111,64 @@ test('should ignore update doc content to database when update type is workspace
   });
   t.is(spy.callCount, 0);
 });
+
+test('should update workspace content to database when workspace is updated', async t => {
+  const { docReader, models, adapter, listener } = t.context;
+  const updates: Buffer[] = [];
+  {
+    const doc = new YDoc();
+    doc.on('update', data => {
+      updates.push(Buffer.from(data));
+    });
+
+    const text = doc.getText('content');
+    text.insert(0, 'hello');
+    text.insert(5, 'world');
+  }
+  await adapter.pushDocUpdates(workspace.id, workspace.id, updates);
+  await adapter.getDoc(workspace.id, workspace.id);
+
+  mock.method(docReader, 'parseWorkspaceContent', () => {
+    return {
+      name: 'test workspace name',
+      avatarKey: 'test avatar key',
+    };
+  });
+
+  await listener.markDocContentCacheStale({
+    workspaceId: workspace.id,
+    docId: workspace.id,
+  });
+  const content = await models.workspace.get(workspace.id);
+  t.truthy(content);
+  t.is(content!.name, 'test workspace name');
+  t.is(content!.avatarKey, 'test avatar key');
+});
+
+test('should ignore update workspace content to database when parse workspace content return null', async t => {
+  const { models, adapter, listener } = t.context;
+  const updates: Buffer[] = [];
+  {
+    const doc = new YDoc();
+    doc.on('update', data => {
+      updates.push(Buffer.from(data));
+    });
+
+    const text = doc.getText('content');
+    text.insert(0, 'hello');
+    text.insert(5, 'world');
+  }
+  await adapter.pushDocUpdates(workspace.id, workspace.id, updates);
+  await adapter.getDoc(workspace.id, workspace.id);
+
+  const spy = Sinon.spy(models.workspace, 'update');
+  await listener.markDocContentCacheStale({
+    workspaceId: workspace.id,
+    docId: workspace.id,
+  });
+  t.is(spy.callCount, 0);
+  const content = await models.workspace.get(workspace.id);
+  t.truthy(content);
+  t.is(content!.name, null);
+  t.is(content!.avatarKey, null);
+});

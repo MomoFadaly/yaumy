@@ -12,8 +12,8 @@ import {
   Config,
   CryptoHelper,
   getOrGenRequestId,
-  URLHelper,
   UserFriendlyError,
+  WorkspaceHelper,
 } from '../../base';
 import { WorkspaceBlobStorage } from '../storage';
 import {
@@ -79,6 +79,7 @@ export abstract class DocReader {
     return content;
   }
 
+  // TODO(@fengmk2): should remove this method after frontend support workspace content update
   async getWorkspaceContent(
     workspaceId: string
   ): Promise<WorkspaceDocInfo | null> {
@@ -130,7 +131,7 @@ export class DatabaseDocReader extends DocReader {
     protected override readonly cache: Cache,
     protected readonly workspace: PgWorkspaceDocStorageAdapter,
     protected readonly blobStorage: WorkspaceBlobStorage,
-    protected readonly url: URLHelper
+    protected readonly workspaceHelper: WorkspaceHelper
   ) {
     super(cache);
   }
@@ -178,8 +179,9 @@ export class DatabaseDocReader extends DocReader {
     }
     let avatarUrl: string | undefined;
     if (content.avatarKey) {
-      avatarUrl = this.url.link(
-        `/api/workspaces/${workspaceId}/blobs/${content.avatarKey}`
+      avatarUrl = this.workspaceHelper.getAvatarUrl(
+        workspaceId,
+        content.avatarKey
       );
     }
     return {
@@ -201,9 +203,9 @@ export class RpcDocReader extends DatabaseDocReader {
     protected override readonly cache: Cache,
     protected override readonly workspace: PgWorkspaceDocStorageAdapter,
     protected override readonly blobStorage: WorkspaceBlobStorage,
-    protected override readonly url: URLHelper
+    protected override readonly workspaceHelper: WorkspaceHelper
   ) {
-    super(cache, workspace, blobStorage, url);
+    super(cache, workspace, blobStorage, workspaceHelper);
   }
 
   private async fetch(

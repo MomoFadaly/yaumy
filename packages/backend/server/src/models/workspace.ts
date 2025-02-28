@@ -62,7 +62,7 @@ export { WorkspaceMemberStatus };
 export type { Workspace };
 export type UpdateWorkspaceInput = Pick<
   Partial<Workspace>,
-  'public' | 'enableAi' | 'enableUrlPreview'
+  'public' | 'enableAi' | 'enableUrlPreview' | 'name' | 'avatarKey'
 >;
 
 export interface FindWorkspaceMembersOptions {
@@ -121,6 +121,14 @@ export class WorkspaceModel extends BaseModel {
     return await this.db.workspace.findUnique({
       where: {
         id: workspaceId,
+      },
+    });
+  }
+
+  async findMany(workspaceIds: string[]) {
+    return await this.db.workspace.findMany({
+      where: {
+        id: { in: workspaceIds },
       },
     });
   }

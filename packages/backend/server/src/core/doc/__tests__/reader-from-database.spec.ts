@@ -193,7 +193,7 @@ test('should get workspace content with default avatar', async t => {
     user.id
   );
 
-  const track = mock.method(docReader, 'parseWorkspaceContent', () => ({
+  mock.method(docReader, 'parseWorkspaceContent', () => ({
     name: 'Test Workspace',
     avatarKey: '',
   }));
@@ -206,7 +206,6 @@ test('should get workspace content with default avatar', async t => {
     avatarKey: '',
     avatarUrl: undefined,
   });
-  t.is(track.mock.callCount(), 1);
 });
 
 test('should get workspace content with custom avatar', async t => {
@@ -239,7 +238,7 @@ test('should get workspace content with custom avatar', async t => {
     Buffer.from('mock avatar image data here')
   );
 
-  const track = mock.method(docReader, 'parseWorkspaceContent', () => ({
+  mock.method(docReader, 'parseWorkspaceContent', () => ({
     name: 'Test Workspace',
     avatarKey,
   }));
@@ -252,5 +251,4 @@ test('should get workspace content with custom avatar', async t => {
     avatarKey,
     avatarUrl: `http://localhost:3010/api/workspaces/${workspace.id}/blobs/${avatarKey}`,
   });
-  t.is(track.mock.callCount(), 1);
 });
