@@ -115,3 +115,50 @@ export function debugLog(message: string, state: RenderingState) {
     'color: inherit;'
   );
 }
+
+export function paintPlaceholder(
+  canvas: HTMLCanvasElement,
+  layout: ViewportLayout | null,
+  viewport: Viewport
+) {
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return;
+  if (!layout) return;
+  const dpr = window.devicePixelRatio;
+  const layoutViewCoord = viewport.toViewCoord(layout.rect.x, layout.rect.y);
+
+  const offsetX = layoutViewCoord[0];
+  const offsetY = layoutViewCoord[1];
+  const colors = [
+    'rgba(200, 200, 200, 0.7)',
+    'rgba(180, 180, 180, 0.7)',
+    'rgba(160, 160, 160, 0.7)',
+  ];
+
+  layout.paragraphs.forEach((paragraph, paragraphIndex) => {
+    ctx.fillStyle = colors[paragraphIndex % colors.length];
+    const renderedPositions = new Set<string>();
+
+    paragraph.sentences.forEach(sentence => {
+      sentence.rects.forEach(textRect => {
+        const x =
+          ((textRect.rect.x - layout.rect.x) * viewport.zoom + offsetX) * dpr;
+        const y =
+          ((textRect.rect.y - layout.rect.y) * viewport.zoom + offsetY) * dpr;
+        dpr;
+        const width = textRect.rect.w * viewport.zoom * dpr;
+        const height = textRect.rect.h * viewport.zoom * dpr;
+
+        const posKey = `${x},${y}`;
+        if (renderedPositions.has(posKey)) return;
+        ctx.fillRect(x, y, width, height);
+        if (width > 10 && height > 5) {
+          ctx.strokeStyle = 'rgba(150, 150, 150, 0.3)';
+          ctx.strokeRect(x, y, width, height);
+        }
+
+        renderedPositions.add(posKey);
+      });
+    });
+  });
+}

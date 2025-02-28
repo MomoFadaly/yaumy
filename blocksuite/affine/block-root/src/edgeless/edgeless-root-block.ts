@@ -447,7 +447,7 @@ export class EdgelessRootBlockComponent extends BlockComponent<
           );
 
           const zoom = normalizeWheelDeltaY(e.deltaY, viewport.zoom);
-          viewport.setZoom(zoom, new Point(baseX, baseY));
+          viewport.setZoom(zoom, new Point(baseX, baseY), true);
           e.stopPropagation();
         }
         // pan

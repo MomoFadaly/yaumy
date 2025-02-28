@@ -15,8 +15,9 @@ import {
   debugLog,
   getViewportLayout,
   initTweakpane,
+  paintPlaceholder,
   syncCanvasSize,
-} from './dom-utils.js';
+} from './renderer-utils.js';
 import type { RenderingState, ViewportLayout } from './types.js';
 
 export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
@@ -25,18 +26,16 @@ export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
 
 interface Tile {
   bitmap: ImageBitmap;
-  zoom: number;
 }
 
 const zoomThreshold = 1; // With high enough zoom, fallback to DOM rendering
 const debounceTime = 1000; // During this period, fallback to DOM
-const debug = false; // Toggle for debug logs
+const debug = true; // Toggle for debug logs
 
 export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   state: RenderingState = 'inactive';
   disposables = new DisposableGroup();
   private layoutVersion = 0;
-
   static override setup(di: Container) {
     di.addImpl(ViewportTurboRendererIdentifier, this, [StdIdentifier]);
   }
@@ -75,6 +74,18 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
           this.refresh().catch(console.error);
         })
       );
+
+      this.disposables.add({
+        dispose: this.viewport.zooming$.subscribe(isZooming => {
+          this.debugLog(`Zooming signal changed: ${isZooming}`);
+          if (isZooming) {
+            this.setState('zooming');
+          } else if (this.state === 'zooming') {
+            this.setState('pending');
+            this.refresh().catch(console.error);
+          }
+        }),
+      });
     });
 
     this.disposables.add(
@@ -125,19 +136,26 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
       this.toggleOptimization(false);
       this.clearOptimizedBlocks();
     }
+    // -> zooming
+    else if (this.isZooming()) {
+      this.debugLog('Currently zooming, using placeholder rendering');
+      this.setState('zooming');
+      this.paintPlaceholder();
+      this.updateOptimizedBlocks();
+    }
     // -> ready
     else if (this.canUseBitmapCache()) {
       this.debugLog('Using cached bitmap');
       this.setState('ready');
-      this.drawCachedBitmap(this.layoutCache);
+      this.drawCachedBitmap();
       this.updateOptimizedBlocks();
     }
     // -> rendering
     else {
       this.setState('rendering');
       this.toggleOptimization(false);
-      await this.paintLayout(this.layoutCache);
-      this.drawCachedBitmap(this.layoutCache);
+      await this.paintLayout();
+      this.drawCachedBitmap();
       this.updateOptimizedBlocks();
     }
   }
@@ -172,10 +190,11 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     this.debugLog('Tile cleared');
   }
 
-  private async paintLayout(layout: ViewportLayout): Promise<void> {
+  private async paintLayout(): Promise<void> {
     return new Promise(resolve => {
       if (!this.worker) return;
 
+      const layout = this.layoutCache;
       const dpr = window.devicePixelRatio;
       const currentVersion = this.layoutVersion;
 
@@ -198,7 +217,10 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
             this.debugLog(
               `Bitmap painted successfully (version=${e.data.version})`
             );
-            this.handlePaintedBitmap(e.data.bitmap, resolve);
+            this.clearTile();
+            this.tile = { bitmap: e.data.bitmap };
+            this.setState('ready');
+            resolve();
           } else {
             this.debugLog(
               `Received outdated bitmap (got=${e.data.version}, current=${this.layoutVersion})`
@@ -212,20 +234,14 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     });
   }
 
-  private handlePaintedBitmap(bitmap: ImageBitmap, resolve: () => void) {
-    this.clearTile();
-    this.tile = {
-      bitmap,
-      zoom: this.viewport.zoom,
-    };
-    this.setState('ready');
-    resolve();
+  private canUseBitmapCache(): boolean {
+    // Never use bitmap cache during zooming
+    if (this.isZooming()) return false;
+    return !!(this.layoutCache && this.tile);
   }
 
-  private canUseBitmapCache(): boolean {
-    return (
-      !!this.layoutCache && !!this.tile && this.viewport.zoom === this.tile.zoom
-    );
+  private isZooming(): boolean {
+    return this.viewport.zooming$.value;
   }
 
   private clearCanvas() {
@@ -235,13 +251,14 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     this.debugLog('Canvas cleared');
   }
 
-  private drawCachedBitmap(layout: ViewportLayout) {
+  private drawCachedBitmap() {
     if (!this.tile) {
       this.debugLog('No cached bitmap available, requesting refresh');
       this.debouncedRefresh();
       return;
     }
 
+    const layout = this.layoutCache;
     const bitmap = this.tile.bitmap;
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
@@ -265,26 +282,22 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
 
   setState(newState: RenderingState) {
     if (this.state === newState) return;
-    this.debugLog(`State change: ${this.state} -> ${newState}`);
     this.state = newState;
+    this.debugLog(`State change: ${this.state} -> ${newState}`);
   }
 
-  canOptimize(): boolean {
-    const isReady = this.state === 'ready';
+  private canOptimize(): boolean {
     const isBelowZoomThreshold = this.viewport.zoom <= zoomThreshold;
-    const result = isReady && isBelowZoomThreshold;
-    return result;
+    return (
+      (this.state === 'ready' || this.state === 'zooming') &&
+      isBelowZoomThreshold
+    );
   }
 
   private updateOptimizedBlocks() {
     requestAnimationFrame(() => {
       if (!this.viewportElement || !this.layoutCache) return;
       if (!this.canOptimize()) return;
-      if (this.state !== 'ready') {
-        this.debugLog('Unexpected state updating optimized blocks');
-        console.warn('Unexpected state', this.tile, this.layoutCache);
-        return;
-      }
 
       this.toggleOptimization(true);
       const blockElements = this.viewportElement.getModelsInViewport();
@@ -315,5 +328,9 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     syncCanvasSize(this.canvas, this.std.host);
     this.invalidate();
     this.debouncedRefresh();
+  }
+
+  private paintPlaceholder() {
+    paintPlaceholder(this.canvas, this.layoutCache, this.viewport);
   }
 }
