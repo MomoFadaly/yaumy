@@ -54,6 +54,10 @@ export class Flags {
     this.toggle(Flag.Hiding, false);
   }
 
+  isSurface() {
+    return this.check(Flag.Surface);
+  }
+
   isText() {
     return this.check(Flag.Text);
   }

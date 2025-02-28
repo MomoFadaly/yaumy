@@ -9,7 +9,7 @@ import {
   type ToolbarContext,
   type ToolbarModuleConfig,
 } from '@blocksuite/affine-shared/services';
-import { BlockSelection } from '@blocksuite/block-std';
+import { BlockSelection, SurfaceSelection } from '@blocksuite/block-std';
 import { nextTick } from '@blocksuite/global/utils';
 import { MoreVerticalIcon } from '@blocksuite/icons/lit';
 import type {
@@ -172,34 +172,33 @@ export function renderToolbar(
       context,
       renderMenuActionItem
     );
-    if (moreMenuItems.length) {
-      // TODO(@fundon): edgeless case needs to be considered
-      const key = `${flavour}:${context.getCurrentModelBy(BlockSelection)?.id}`;
+    // if (moreMenuItems.length) {
+    // TODO(@fundon): edgeless case needs to be considered
+    const key = `${context.getCurrentModelBy(context.isPageMode ? BlockSelection : SurfaceSelection)?.id}`;
+    console.log(key);
 
-      primaryActionGroup.push({
-        id: 'more',
-        content: html`${keyed(
-          key,
-          html`
-            <editor-menu-button
-              class="more-menu"
-              .contentPadding="${'8px'}"
-              .button=${html`
-                <editor-icon-button aria-label="More" .tooltip="${'More'}">
-                  ${MoreVerticalIcon()}
-                </editor-icon-button>
-              `}
-            >
-              <div data-size="large" data-orientation="vertical">
-                ${join(moreMenuItems, () =>
-                  renderToolbarSeparator('horizontal')
-                )}
-              </div>
-            </editor-menu-button>
-          `
-        )}`,
-      });
-    }
+    primaryActionGroup.push({
+      id: 'more',
+      content: html`${keyed(
+        `${flavour}:${key}`,
+        html`
+          <editor-menu-button
+            class="more-menu"
+            .contentPadding="${'8px'}"
+            .button=${html`
+              <editor-icon-button aria-label="More" .tooltip="${'More'}">
+                ${MoreVerticalIcon()}
+              </editor-icon-button>
+            `}
+          >
+            <div data-size="large" data-orientation="vertical">
+              ${join(moreMenuItems, () => renderToolbarSeparator('horizontal'))}
+            </div>
+          </editor-menu-button>
+        `
+      )}`,
+    });
+    // }
   }
 
   render(

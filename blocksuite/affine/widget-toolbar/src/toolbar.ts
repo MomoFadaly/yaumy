@@ -23,7 +23,10 @@ import {
   TextSelection,
   WidgetComponent,
 } from '@blocksuite/block-std';
-import { GfxControllerIdentifier } from '@blocksuite/block-std/gfx';
+import {
+  GfxBlockElementModel,
+  GfxPrimitiveElementModel,
+} from '@blocksuite/block-std/gfx';
 import {
   Bound,
   getCommonBound,
@@ -156,14 +159,14 @@ export class AffineToolbarWidget extends WidgetComponent {
 
     // Selects blocks in note.
     disposables.add(
-      std.selection.filter$(BlockSelection).subscribe(result => {
-        const count = result.length;
+      std.selection.filter$(BlockSelection).subscribe(results => {
+        const count = results.length;
         let flavour = 'affine:note';
         let activated = context.activated && Boolean(count);
 
         if (activated) {
           // Handles a signal block.
-          const block = count === 1 && std.store.getBlock(result[0].blockId);
+          const block = count === 1 && std.store.getBlock(results[0].blockId);
 
           // Chencks if block's config exists.
           if (block) {
@@ -199,12 +202,46 @@ export class AffineToolbarWidget extends WidgetComponent {
     // Selects elements in edgeless.
     // Triggered only when not in editing state.
     disposables.add(
-      std.selection.filter$(SurfaceSelection).subscribe(result => {
+      std.selection.filter$(SurfaceSelection).subscribe(results => {
+        const count = results.length;
+        const gfx = context.gfx;
+        const surface = gfx.surface;
         const activated =
           context.activated &&
-          Boolean(result.length) &&
-          !result.some(e => e.editing);
-        flags.toggle(Flag.Surface, activated);
+          Boolean(count) &&
+          Boolean(surface) &&
+          !results.some(r => r.editing || r.elements.length === 0);
+        let flavour = '';
+
+        if (activated && surface) {
+          const elements = results
+            .map(r =>
+              r.elements
+                .map(id => gfx.getElementById(id))
+                .filter(m => m !== null)
+            )
+            .flat();
+          for (const model of elements) {
+            if (model instanceof GfxBlockElementModel) {
+              console.log(model.id, model.flavour);
+              const pieces = model.flavour.split(':');
+              flavour = `${surface.flavour}:${pieces.pop()}`;
+            } else if (model instanceof GfxPrimitiveElementModel) {
+              console.log(model.id, `${surface.flavour}:${model?.type}`);
+              flavour = `${surface.flavour}:${model?.type}`;
+            }
+          }
+        }
+
+        batch(() => {
+          flavour$.value = flavour;
+
+          flags.toggle(Flag.Surface, activated);
+
+          if (!activated) return;
+
+          flags.refresh(Flag.Surface);
+        });
       })
     );
 
@@ -305,7 +342,7 @@ export class AffineToolbarWidget extends WidgetComponent {
 
     // Should update position of notes' toolbar in edgeless
     disposables.add(
-      this.std.get(GfxControllerIdentifier).viewport.viewportUpdated.on(() => {
+      context.gfx.viewport.viewportUpdated.on(() => {
         if (!context.activated) return;
 
         if (flags.value === Flag.None || flags.check(Flag.Hiding)) {
@@ -322,8 +359,8 @@ export class AffineToolbarWidget extends WidgetComponent {
           return;
         }
 
-        if (flags.isBlock()) {
-          flags.refresh(Flag.Block);
+        if (flags.isSurface()) {
+          flags.refresh(Flag.Surface);
           return;
         }
       })
@@ -342,9 +379,10 @@ export class AffineToolbarWidget extends WidgetComponent {
         // 2. `Flag.Native`: formating in database
         // 3. `Flag.Block`: blocks in note
         // 4. `Flag.Hovering`: inline links in note/database
+        // 5. `Flag.Surface`: elements in edgeless
         if (
           flags.contains(
-            Flag.Hovering | Flag.Text | Flag.Native | Flag.Block,
+            Flag.Hovering | Flag.Text | Flag.Native | Flag.Block | Flag.Surface,
             value
           )
         ) {
@@ -352,9 +390,6 @@ export class AffineToolbarWidget extends WidgetComponent {
           toolbar.dataset.open = 'true';
           return;
         }
-
-        // Shows toolbar in edgeles
-        // TODO(@fundon): handles edgeless toolbar
       })
     );
 
