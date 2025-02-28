@@ -24,13 +24,9 @@ export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
   'ViewportTurboRenderer'
 ) as ServiceIdentifier<ViewportTurboRendererExtension>;
 
-interface Tile {
-  bitmap: ImageBitmap;
-}
-
+const debug = false; // Toggle for debug logs
 const zoomThreshold = 1; // With high enough zoom, fallback to DOM rendering
 const debounceTime = 1000; // During this period, fallback to DOM
-const debug = true; // Toggle for debug logs
 
 export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   state: RenderingState = 'inactive';
@@ -43,7 +39,7 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   public readonly canvas: HTMLCanvasElement = document.createElement('canvas');
   private readonly worker: Worker;
   private layoutCacheData: ViewportLayout | null = null;
-  private tile: Tile | null = null;
+  private bitmap: ImageBitmap | null = null;
   private viewportElement: GfxViewportElement | null = null;
 
   constructor(std: BlockStdScope) {
@@ -98,7 +94,7 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
 
   override unmounted() {
     this.debugLog('Unmounting renderer');
-    this.clearTile();
+    this.clearBitmap();
     this.clearOptimizedBlocks();
     this.worker.terminate();
     this.canvas.remove();
@@ -171,7 +167,7 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   invalidate() {
     this.layoutVersion++;
     this.layoutCacheData = null;
-    this.clearTile();
+    this.clearBitmap();
     this.clearCanvas();
     this.clearOptimizedBlocks();
     this.setState('pending');
@@ -183,11 +179,11 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     debugLog(message, this.state);
   }
 
-  private clearTile() {
-    if (!this.tile) return;
-    this.tile.bitmap.close();
-    this.tile = null;
-    this.debugLog('Tile cleared');
+  private clearBitmap() {
+    if (!this.bitmap) return;
+    this.bitmap.close();
+    this.bitmap = null;
+    this.debugLog('Bitmap cleared');
   }
 
   private async paintLayout(): Promise<void> {
@@ -217,8 +213,8 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
             this.debugLog(
               `Bitmap painted successfully (version=${e.data.version})`
             );
-            this.clearTile();
-            this.tile = { bitmap: e.data.bitmap };
+            this.clearBitmap();
+            this.bitmap = e.data.bitmap;
             this.setState('ready');
             resolve();
           } else {
@@ -237,7 +233,7 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   private canUseBitmapCache(): boolean {
     // Never use bitmap cache during zooming
     if (this.isZooming()) return false;
-    return !!(this.layoutCache && this.tile);
+    return !!(this.layoutCache && this.bitmap);
   }
 
   private isZooming(): boolean {
@@ -252,14 +248,14 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
   }
 
   private drawCachedBitmap() {
-    if (!this.tile) {
+    if (!this.bitmap) {
       this.debugLog('No cached bitmap available, requesting refresh');
       this.debouncedRefresh();
       return;
     }
 
     const layout = this.layoutCache;
-    const bitmap = this.tile.bitmap;
+    const bitmap = this.bitmap;
     const ctx = this.canvas.getContext('2d');
     if (!ctx) return;
 
