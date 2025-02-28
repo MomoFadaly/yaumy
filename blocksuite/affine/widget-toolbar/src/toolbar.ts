@@ -11,12 +11,13 @@ import {
   getBlockSelectionsCommand,
   getSelectedBlocksCommand,
 } from '@blocksuite/affine-shared/commands';
+import { ImageSelection } from '@blocksuite/affine-shared/selection';
 import {
   ToolbarContext,
   ToolbarFlag as Flag,
   ToolbarRegistryIdentifier,
 } from '@blocksuite/affine-shared/services';
-import { matchModels } from '@blocksuite/affine-shared/utils';
+import { listenClickAway, matchModels } from '@blocksuite/affine-shared/utils';
 import {
   BlockSelection,
   SurfaceSelection,
@@ -240,6 +241,29 @@ export class AffineToolbarWidget extends WidgetComponent {
           flags.reset();
           return;
         }
+      })
+    );
+
+    // Clicks outside the editor
+    disposables.add(
+      listenClickAway(std.host, () => {
+        if (flags.check(Flag.Hiding)) return;
+
+        const range = range$.peek();
+        if (range) {
+          const selection = window.getSelection();
+          if (selection?.rangeCount) selection?.removeRange(range);
+          range$.value = null;
+        }
+
+        if (
+          std.selection.find(BlockSelection) ||
+          std.selection.find(ImageSelection)
+        ) {
+          std.selection.clear(['block', 'image']);
+        }
+
+        context.reset();
       })
     );
 
