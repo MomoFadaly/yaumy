@@ -19,10 +19,6 @@ import {
 } from './renderer-utils.js';
 import type { RenderingState, ViewportLayout } from './types.js';
 
-export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
-  'ViewportTurboRenderer'
-) as ServiceIdentifier<ViewportTurboRendererExtension>;
-
 const debug = false; // Toggle for debug logs
 const zoomThreshold = 1; // With high enough zoom, fallback to DOM rendering
 const debounceTime = 1000; // During this period, fallback to DOM
@@ -322,3 +318,7 @@ export class ViewportTurboRendererExtension extends LifeCycleWatcher {
     paintPlaceholder(this.canvas, this.layoutCache, this.viewport);
   }
 }
+
+export const ViewportTurboRendererIdentifier = LifeCycleWatcherIdentifier(
+  'ViewportTurboRenderer'
+) as ServiceIdentifier<ViewportTurboRendererExtension>;
