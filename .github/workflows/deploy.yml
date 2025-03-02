@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       flavor:
-        description: 'Select what enverionment to deploy to'
+        description: 'Select what environment to deploy to'
         type: choice
         default: canary
         options:
@@ -201,3 +201,34 @@ jobs:
                 text:
                   type: mrkdwn
                   text: "<${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}|Backend deploy cancelled `${{ github.event.inputs.flavor }}`>"
+
+  ######################################################################
+  # NEW JOB: Deploy to your self-hosted server via SSH (only if canary)
+  ######################################################################
+  server-deploy:
+    name: Deploy to Self-Hosted Server
+    if: ${{ github.event.inputs.flavor == 'canary' }}
+    environment: ${{ github.event.inputs.flavor }}
+    needs:
+      - build-images
+      - deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+
+      # This uses appleboy/ssh-action to log into your server,
+      # pull the code, and run Docker Compose
+      - name: SSH to Server & Deploy
+        uses: appleboy/ssh-action@master
+        with:
+          host: ${{ secrets.SERVER_HOST }} # e.g., your server IP
+          username: ${{ secrets.SERVER_USER }} # e.g., root
+          key: ${{ secrets.SSH_PRIVATE_KEY }} # private key from GitHub secrets
+          script_stop: false
+          script: |
+            # Example commands to deploy your AFFiNE code
+            cd /var/www/app/yaumy
+            git pull origin canary
+            cd .docker/selfhost
+            docker compose -f compose.yml up -d --build
