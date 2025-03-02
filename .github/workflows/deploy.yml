@@ -1,6 +1,11 @@
 name: Deploy
 
 on:
+  # Automatically trigger on push to the canary branch
+  push:
+    branches: ['canary']
+
+  # Still allow manual dispatch with flavor selection
   workflow_dispatch:
     inputs:
       flavor:
@@ -18,45 +23,22 @@ permissions:
   id-token: 'write'
   packages: 'write'
 
-###############################################################################
-# REMOVED / COMMENTED GCP-JOBS
-# (No more "Output previous version," "Build Images," "Deploy," or "deploy-done")
-# because they reference GCP cluster-auth, and cause errors if you aren't using GCP.
-###############################################################################
-#
-# jobs:
-#   output-prev-version:
-#     name: Output previous version
-#     runs-on: ubuntu-latest
-#     environment: ${{ github.event.inputs.flavor }}
-#     ...
-#
-#   build-images:
-#     name: Build Images
-#     ...
-#
-#   deploy:
-#     name: Deploy to cluster
-#     ...
-#
-#   deploy-done:
-#     name: Post deploy message
-#     ...
-
-###############################################################################
-# NEW JOB: Deploy to your self-hosted server via SSH (only if canary)
-###############################################################################
 jobs:
   server-deploy:
     name: Deploy to Self-Hosted Server
-    # By default, we only do this if the flavor is canary. Adjust if needed.
-    if: ${{ github.event.inputs.flavor == 'canary' }}
+    # This condition ensures the job runs if:
+    # 1) It's a push event to the 'canary' branch, OR
+    # 2) It's a manual workflow_dispatch with flavor == 'canary'
+    if: >
+      (github.event_name == 'push' && github.ref == 'refs/heads/canary')
+      || (github.event_name == 'workflow_dispatch' && github.event.inputs.flavor == 'canary')
+
     runs-on: ubuntu-latest
     steps:
       - name: Check out code
         uses: actions/checkout@v4
 
-      # This uses appleboy/ssh-action to log into your DigitalOcean droplet,
+      # Use appleboy/ssh-action to SSH into your DigitalOcean droplet,
       # pull the code, and run Docker Compose.
       - name: SSH to Server & Deploy
         uses: appleboy/ssh-action@master
